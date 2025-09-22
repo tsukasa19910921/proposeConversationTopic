@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import Navigation from '@/components/Navigation'
 import TopicModal from '@/components/TopicModal'
 import Toast from '@/components/Toast'
+import CameraScanner from '@/components/CameraScanner'
 
 export default function HomePage() {
   const [qrData, setQrData] = useState<{ url: string; svg: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [topic, setTopic] = useState<string>('')
   const [showTopicModal, setShowTopicModal] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; isVisible: boolean }>({
     message: '',
     type: 'success',
@@ -52,21 +54,14 @@ export default function HomePage() {
     setToast(prev => ({ ...prev, isVisible: false }))
   }
 
-  const handleScan = async () => {
-    // 簡易実装：ランダムなユーザーIDでスキャンをシミュレート
-    const testUserIds = [
-      '11111111-1111-1111-1111-111111111111',
-      '22222222-2222-2222-2222-222222222222'
-    ]
-    const randomUserId = testUserIds[Math.floor(Math.random() * testUserIds.length)]
-
+  const handleScanResult = async (scannedSid: string) => {
     try {
       const response = await fetch('/api/scan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ scannedSid: randomUserId }),
+        body: JSON.stringify({ scannedSid }),
       })
 
       const data = await response.json()
@@ -79,6 +74,10 @@ export default function HomePage() {
         showToast(data.message || '時間をおいてトライしてください', 'warning')
       } else if (response.status === 401) {
         router.push('/auth/login')
+      } else if (response.status === 400 && data.error === 'self_scan') {
+        showToast('自分のQRコードはスキャンできません', 'warning')
+      } else if (response.status === 404) {
+        showToast('ユーザーが見つかりませんでした', 'error')
       } else {
         showToast('スキャンに失敗しました', 'error')
       }
@@ -146,18 +145,22 @@ export default function HomePage() {
       {/* スキャンボタン */}
       <div className="space-y-3">
         <button
-          onClick={handleScan}
+          onClick={() => setShowScanner(true)}
           className="w-full py-3 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-lg font-medium"
         >
           📱 相手のQRを読み取る
         </button>
-        <p className="text-xs text-gray-500 text-center">
-          ※ このデモでは模擬スキャンを実行します
-        </p>
       </div>
 
       {/* ナビゲーション */}
       <Navigation />
+
+      {/* カメラスキャナー */}
+      <CameraScanner
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={handleScanResult}
+      />
 
       {/* モーダル */}
       <TopicModal

@@ -1,3 +1,8 @@
+// Force dynamic execution (required for cookies and Prisma)
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Force dynamic execution (required for cookies)
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
