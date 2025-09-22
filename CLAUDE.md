@@ -385,10 +385,10 @@ export async function GET() {
 
 ## 10. 実装状況と順序
 
-### ✅ 実装完了済み：
+### ✅ 実装完了済み（バックエンド）：
 1. **基盤設定**
    - Next.js 14プロジェクト初期化
-   - Prisma設定とスキーマ定義
+   - Prisma設定とスキーマ定義（PostgreSQL対応）
    - TypeScript設定（target: es2020）
    - Tailwind CSS設定
 
@@ -400,7 +400,7 @@ export async function GET() {
    - `api/auth/logout` - ログアウト
 
 3. **プロフィール機能**
-   - `lib/repos/profile.ts` - プロフィール管理
+   - `lib/repos/profile.ts` - プロフィール管理（String型でJSON保存）
    - `api/profile/me` - GET/PUT エンドポイント
 
 4. **QR生成・表示**
@@ -416,19 +416,42 @@ export async function GET() {
 6. **実績表示**
    - `api/metrics/me` - 実績取得エンドポイント
 
-### 🚧 次の実装予定：
-1. **フロントエンド画面**
-   - 認証画面（ログイン/新規登録）
-   - ホーム画面（QR表示・スキャン）
-   - プロフィール設定画面
-   - 実績表示画面
-   - ナビゲーション・モーダル・トースト
+### ✅ 実装完了済み（フロントエンド）：
+1. **認証画面**
+   - `/auth/signup` - 新規登録画面
+   - `/auth/login` - ログイン画面
+   - 認証後のリダイレクト処理
 
-2. **UI磨き・エラーハンドリング**
+2. **メイン画面**
+   - `/home` - QR表示・スキャン機能
+   - `/profile` - プロフィール編集
+   - `/metrics` - 実績表示
+
+3. **共通コンポーネント**
+   - `Navigation.tsx` - 3タブナビゲーション
+   - `TopicModal.tsx` - 話題表示モーダル
+   - `Toast.tsx` - エラー/通知トースト
+   - `CameraScanner.tsx` - QRスキャナー
+
+### ✅ Vercelデプロイ対応：
+- **動的実行設定**: 全APIルートに `export const dynamic = 'force-dynamic'` 追加
+- **環境変数ドキュメント**: DEPLOYMENT_FIX.md作成
+- **本番環境での動作確認済み**
 
 ### 📝 修正済み設計変更：
 - **Middleware削除**: Edge環境でのnext/headers互換性問題により、各APIハンドラでの認証チェックに統一
 - **QR画像サイズ**: SVGの拡大縮小特性を活かすためwidth固定指定を削除
+- **Profile.profileJson型**: PostgreSQLとの互換性のためString型で保持（JSON.parse/stringifyで処理）
+- **動的レンダリング強制**: cookies()使用によるビルドエラー対策
+
+### 🎉 POC完成状態：
+現在、全機能が実装済みでVercelデプロイも成功。以下が動作確認済み：
+- ユーザー登録・ログイン
+- プロフィール保存・取得
+- QRコード生成・表示
+- スキャン・話題生成（Gemini連携）
+- 実績カウント表示
+- 30秒クールダウン機能
 
 ---
 
@@ -441,11 +464,20 @@ export async function GET() {
 
 ---
 
-## 12. デプロイ注意
-- DBは **Supabase** 無料枠でOK
-- Vercelには環境変数を必ず設定
-- KV（クールダウン共有）は本番スケール時に検討
-- HTTPS環境必須
+## 12. デプロイ手順（Vercel）
+
+### 必須環境変数
+1. **DATABASE_URL** - PostgreSQL接続文字列（Supabase/Neon）
+2. **SESSION_SECRET** - ランダムな32文字以上の文字列
+3. **APP_BASE_URL** - 本番URL（例: https://your-app.vercel.app）
+4. **GOOGLE_GEMINI_API_KEY** - Gemini APIキー
+5. **SESSION_MAX_AGE_SECONDS** - セッション有効期限（デフォルト: 86400）
+
+### デプロイ確認事項
+- ✅ 全APIルートに `export const dynamic = 'force-dynamic'` 設定済み
+- ✅ Prismaビルド時に `prisma generate` 実行（package.jsonのbuildスクリプトで対応済み）
+- ✅ PostgreSQL（Supabase）との接続確認済み
+- ✅ HTTPS環境での動作確認済み
 
 ---
 
