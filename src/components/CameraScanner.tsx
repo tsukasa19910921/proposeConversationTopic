@@ -1,19 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 
-// Dynamic import to avoid SSR issues - using Scanner instead of QrScanner
 const Scanner = dynamic(
-  () => import('@yudiel/react-qr-scanner').then((mod) => mod.Scanner),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
+  () => import('@yudiel/react-qr-scanner').then(m => m.Scanner),
+  { ssr: false }
 );
 
 interface CameraScannerProps {
@@ -26,56 +18,99 @@ export default function CameraScanner({ isOpen, onClose, onScan }: CameraScanner
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      // Reset states when scanner opens
-      setError(null);
-      setHasPermission(null);
+  // 選択したカメラ
+  const [deviceId, setDeviceId] = useState<string | undefined>(undefined);
+  // fallback 用：front を使っているか？
+  const [usingFront, setUsingFront] = useState(false);
 
-      // Request camera permission
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(() => setHasPermission(true))
-        .catch(() => {
-          setHasPermission(false);
-          setError('カメラへのアクセスが許可されていません');
-        });
-    }
+  // constraints 変更時に再マウントさせる key
+  const scannerKey = useMemo(
+    () => `scanner-${deviceId ?? (usingFront ? 'front' : 'env')}`,
+    [deviceId, usingFront]
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setError(null);
+    setHasPermission(null);
+    setDeviceId(undefined);
+    setUsingFront(false);
+
+    // 1) 先に権限を取る（iOS の label 問題に対応）
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(async (stream) => {
+        setHasPermission(true);
+
+        // 2) カメラ列挙 → 背面候補優先
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videos = devices.filter(d => d.kind === 'videoinput');
+
+        const back = videos.find(d => /back|rear|environment/i.test(d.label));
+        if (back?.deviceId) {
+          setDeviceId(back.deviceId);
+          setUsingFront(false);
+        } else {
+          // 背面がなければ最初のカメラ（多くはフロント）
+          setDeviceId(videos[0]?.deviceId);
+          setUsingFront(true);
+        }
+
+        // 権限取得に使ったストリームは閉じる（Scanner に任せる）
+        stream.getTracks().forEach(t => t.stop());
+      })
+      .catch(() => {
+        setHasPermission(false);
+        setError('カメラへのアクセスが許可されていません');
+      });
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleDecode = (result: string) => {
-    // Parse the QR code URL to extract sid
+  const handleDecode = (val: string) => {
     try {
-      const url = new URL(result);
+      const url = new URL(val);
       const sid = url.searchParams.get('sid');
       if (sid) {
         onScan(sid);
         onClose();
-      } else {
-        setError('無効なQRコードです');
+        return;
       }
-    } catch {
-      // Handle non-URL QR codes
-      setError('無効なQRコードです');
-    }
+    } catch { /* not a URL */ }
+    setError('無効なQRコードです');
   };
 
-  const handleError = (error: any) => {
-    console.error('QR Scanner Error:', error);
+  const handleError = (e: any) => {
+    console.error('QR Scanner Error:', e?.name ?? e, e);
+    // 代表的なエラー → 制約を緩めて再試行
+    if (e?.name === 'OverconstrainedError' || e?.name === 'NotReadableError') {
+      // フロント使用中なら制約を極力外してブラウザに選ばせる
+      if (usingFront) {
+        setDeviceId(undefined);     // deviceId 指定を外す
+      } else {
+        setUsingFront(true);        // フロントへ切替
+      }
+      setError('カメラ切替で再試行しています…');
+      return; // Scanner は key 変化で再マウント
+    }
+    if (e?.name === 'NotAllowedError' || e?.name === 'SecurityError') {
+      setHasPermission(false);
+      setError('カメラへのアクセスが拒否されました');
+      return;
+    }
     setError('スキャン中にエラーが発生しました');
   };
+
+  // 最終的に Scanner に渡す制約
+  const constraints: MediaTrackConstraints | boolean =
+    deviceId
+      ? { deviceId: { exact: deviceId } }
+      : { facingMode: { ideal: usingFront ? 'user' : 'environment' } };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 flex flex-col z-50">
       <div className="bg-white text-black p-4 flex justify-between items-center">
         <h2 className="text-xl font-semibold">QRコードをスキャン</h2>
-        <button
-          onClick={onClose}
-          className="text-gray-600 hover:text-gray-800 text-2xl"
-        >
-          ✕
-        </button>
+        <button onClick={onClose} className="text-gray-600 hover:text-gray-800 text-2xl">✕</button>
       </div>
 
       <div className="flex-1 relative">
@@ -107,25 +142,13 @@ export default function CameraScanner({ isOpen, onClose, onScan }: CameraScanner
         ) : (
           <>
             <Scanner
-              onScan={(result) => {
-                if (result && result.length > 0) {
-                  handleDecode(result[0].rawValue);
-                }
-              }}
+              key={scannerKey}
+              onScan={(res) => { if (res && res.length > 0) handleDecode(res[0].rawValue); }}
               onError={handleError}
-              constraints={{
-                facingMode: { ideal: 'environment' }
-              }}
+              constraints={constraints}
               styles={{
-                container: {
-                  width: '100%',
-                  height: '100%'
-                },
-                video: {
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover' as const
-                }
+                container: { width: '100%', height: '100%' },
+                video: { width: '100%', height: '100%', objectFit: 'cover' as const }
               }}
             />
 
