@@ -1,0 +1,1252 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.env.local
+CLAUDE.md
+next.config.js
+package.json
+postcss.config.js
+prisma/schema.prisma
+src/app/api/auth/login/route.ts
+src/app/api/auth/logout/route.ts
+src/app/api/auth/signup/route.ts
+src/app/api/metrics/me/route.ts
+src/app/api/profile/me/route.ts
+src/app/api/qr/me/route.ts
+src/app/api/scan/route.ts
+src/app/globals.css
+src/app/layout.tsx
+src/app/page.tsx
+src/lib/cooldown.ts
+src/lib/db.ts
+src/lib/llm.ts
+src/lib/qr.ts
+src/lib/repos/counters.ts
+src/lib/repos/profile.ts
+src/lib/repos/users.ts
+src/lib/session.ts
+src/middleware.ts
+tailwind.config.js
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".env.local">
+DATABASE_URL=postgres://username:password@localhost:5432/proposeconversationtopic
+SESSION_SECRET=your-very-long-random-secret-string-here-change-this-in-production
+SESSION_MAX_AGE_SECONDS=86400
+APP_BASE_URL=http://localhost:3000
+
+GOOGLE_GEMINI_API_KEY=your-gemini-api-key-here
+</file>
+
+<file path="CLAUDE.md">
+# CLAUDE.md — POC「高校生向けQRプロフィール×話題提示」実装ガイド
+
+本プロジェクトは **Vercel** へデプロイし、**Gemini**（Google Generative AI）を用いて「話題を1件だけ」生成するWebアプリです。  
+開発は **Claude Code**（anthropic/claude-code）でのペアプロ・自動化を想定した手順・タスクを記述します。
+
+---
+
+## 0. プロジェクト要約
+- 目的：QR交換 → Geminiが**会話の最初のひと言（1件）**を提示  
+- 主要ページ：
+  - **ホーム**：自分のQR（大）＋「相手のQRを読み取る」ボタン、話題はモーダル表示  
+  - **プロフィール**：トピック→選択肢→任意入力（PUTで全置換）  
+  - **実績**：自分の `scanOut / scanIn` 数値のみ  
+- 主要API：
+  - `POST /api/auth/signup|login|logout`（署名付きCookieセッション）
+  - `GET/PUT /api/profile/me`
+  - `GET /api/qr/me`（URL＋SVG返却）
+  - `POST /api/scan`（30秒クールダウン / message返却）
+  - `GET /api/metrics/me`（カウントのみ）
+- DBは **User / Profile / Counters** の3表分離設計。  
+- クールダウンは **30秒**（本番はKV推奨、開発は in-memory）。
+
+---
+
+## 1. 技術スタック
+- **Framework**: Next.js 14（App Router）
+- **Runtime**: Node.js 18+（Vercel推奨）
+- **DB**: PostgreSQL（Neon または Supabase 無料枠 / Prisma）
+- **LLM**: **Gemini 1.5**（Google Generative AI / @google/generative-ai）
+- **Auth**: 署名付きCookie（HMAC）
+- **QR**: SVG生成（`qrcode`）
+- **Cooldown**: Vercel KV（本番推奨） / 開発は in-memory Map
+- **UI**: React + Tailwind（推奨）
+
+---
+
+## 2. 環境変数（.env.local）
+DATABASE_URL=postgres://...
+SESSION_SECRET=ランダム長文字列
+SESSION_MAX_AGE_SECONDS=86400
+APP_BASE_URL=http://localhost:3000
+
+GOOGLE_GEMINI_API_KEY=xxxxxxxxxxxxxxxx
+
+---
+
+## 3. ディレクトリ構成
+```
+/src
+  /app
+    /api
+      /auth
+        login/route.ts
+        logout/route.ts
+        signup/route.ts
+      /profile/me/route.ts
+      /qr/me/route.ts
+      /scan/route.ts
+      /metrics/me/route.ts
+  /lib
+    db.ts
+    session.ts       # HMAC署名Cookie
+    llm.ts           # Gemini呼び出し
+    qr.ts            # QR生成
+    cooldown.ts      # クールダウン
+    repos/
+      users.ts
+      profile.ts
+      counters.ts
+  /components
+    QrCard.tsx
+    TopicModal.tsx
+    Toast.tsx
+    Navigation.tsx
+    CameraScanner.tsx
+  /middleware.ts      # API認証ガード
+/prisma
+  schema.prisma
+package.json
+.env.local
+CLAUDE.md
+
+---
+
+## 4. UX設計・画面仕様
+
+### 4.1 ナビゲーション（3タブ）
+1. **ホーム（デフォルト）**
+   - 上部：自分のQR（大きく表示）
+   - 下部：［相手のQRを読み取る］ボタン
+   - スキャン成功 → ホーム上にモーダルで話題表示 → ［閉じる］でホームに戻る
+
+2. **プロフィール**
+   - トピック（例：音楽、スポーツ、趣味等）→ 選択肢（チェックボックス）
+   - 選択時のみ任意の自由入力フィールド表示
+   - ［保存］ボタンでPUT全置換
+
+3. **実績**
+   - 数値のみシンプル表示：
+     - `scanOut`（読んだ回数）
+     - `scanIn`（読まれた回数）
+
+### 4.2 読み取り画面
+- 全画面カメラビュー
+- QR検出 → `POST /api/scan`
+- **429（クールダウン）時**：モーダル出さず、**トースト**「時間をおいてトライしてください ⏳」
+
+### 4.3 話題表示
+- モーダルで**1件だけ**表示（敬体／1–2文／質問で終える）
+- ［閉じる］でホームへ（自分のQRが再び大きく表示）
+
+---
+
+## 5. API仕様詳細
+
+### 5.1 Auth
+- `POST /api/auth/signup`
+  - Body: `{ userId: string, password: string }`
+  - 成功: 200 `{ok:true}` + `Set-Cookie: sid=...`
+  - 重複ID: 409 `{error:"user_exists"}`
+
+- `POST /api/auth/login`
+  - Body: `{ userId: string, password: string }`
+  - 成功: 200 `{ok:true}` + `Set-Cookie: sid=...`
+  - 失敗: 401 `{error:"invalid_credentials"}`
+
+- `POST /api/auth/logout`
+  - 成功: 200 `{ok:true}`（Cookie破棄）
+
+### 5.2 Profile（認証必須）
+- `GET /api/profile/me`
+  - 成功: 200 `{...profileJson}`
+  - 未作成: 404 or `{}`
+
+- `PUT /api/profile/me`
+  - Body: `{ ...profileJson }` （サイズ上限8KB）
+  - 成功: 200 `{ok:true}`
+
+### 5.3 QR（認証必須）
+- `GET /api/qr/me`
+  - 成功: 200 `{ "url": "https://app/scan?sid=<UUID>", "svg": "<svg...>" }`
+
+### 5.4 Scan（認証必須）
+- `POST /api/scan`
+  - Body: `{ "scannedSid": "<相手User.id(UUID)>" }`
+  - 検証：自己スキャン→400、相手不在→404
+  - クールダウン30秒→429 `{"error":"cooldown","message":"時間をおいてトライしてください"}`
+  - 成功→200 `{ "message": "二人とも音楽が好きみたいですね。最近よく聴く曲はありますか？" }`
+  - 副作用：`scanOut++` / `scanIn++`
+
+### 5.5 Metrics（認証必須）
+- `GET /api/metrics/me`
+  - 成功: 200 `{ "scanOut": number, "scanIn": number }`
+
+### 5.6 共通エラー
+| 状態 | HTTP | 返却例 |
+|------|-----:|--------|
+| 未ログイン | 401 | `{"error":"unauthorized"}` |
+| 自己スキャン | 400 | `{"error":"self_scan"}` |
+| 相手不在 | 404 | `{"error":"user_not_found"}` |
+| クールダウン | 429 | `{"error":"cooldown","message":"時間をおいてトライしてください"}` |
+| 予期せぬ | 500 | `{"error":"internal"}` |
+
+---
+
+## 6. Prisma スキーマ
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile      Profile?
+  counters     Counters?
+}
+
+model Profile {
+  userId      String   @id
+  profileJson Json
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Counters {
+  userId        String   @id
+  scanOutCount  Int      @default(0)
+  scanInCount   Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+```
+
+---
+
+## 5. セッション（HMAC署名付きCookie）
+```ts
+// lib/session.ts
+import { cookies } from "next/headers";
+import crypto from "crypto";
+
+const NAME = "sid";
+const MAX_AGE = Number(process.env.SESSION_MAX_AGE_SECONDS || 86400);
+const SECRET = process.env.SESSION_SECRET!;
+
+export function issueTicket(userId: string) {
+  const exp = Math.floor(Date.now() / 1000) + MAX_AGE;
+  const payload = `${userId}.${exp}`;
+  const sig = crypto.createHmac("sha256", SECRET).update(payload).digest("hex");
+  return `${payload}.${sig}`;
+}
+
+export function setSessionCookie(resp: any, userId: string) {
+  const ticket = issueTicket(userId);
+  resp.cookies.set(NAME, ticket, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: MAX_AGE,
+  });
+}
+
+export function requireSession() {
+  const raw = cookies().get(NAME)?.value;
+  if (!raw) throw new Error("UNAUTH");
+  const [userId, expStr, sig] = raw.split(".");
+  const exp = Number(expStr);
+  const now = Math.floor(Date.now() / 1000);
+  if (now > exp) throw new Error("EXPIRED");
+  const payload = `${userId}.${exp}`;
+  const expect = crypto.createHmac("sha256", SECRET).update(payload).digest("hex");
+  if (expect !== sig) throw new Error("BADSIG");
+  return { userId };
+}
+```
+
+---
+
+## 6. クールダウン実装
+```ts
+// lib/cooldown.ts
+let mem = new Map<string, number>();
+const WINDOW = 30_000;
+
+export async function canScan(scannerId: string, scannedId: string) {
+  const key = `${scannerId}:${scannedId}`;
+  const now = Date.now();
+  const last = mem.get(key) ?? 0;
+  if (now - last < WINDOW) return { ok: false, waitMs: WINDOW - (now - last) };
+  mem.set(key, now);
+  return { ok: true };
+}
+```
+
+---
+
+## 7. Gemini 呼び出し
+```ts
+// lib/llm.ts
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+const SYSTEM = `あなたは高校生の初対面の会話を助けるアシスタントです。
+安全第一（政治/宗教/性/病気/金銭/個人特定は扱わない）。
+出力は敬体で1〜2文、最後は質問で終える。出力は1件のみ。`;
+
+export async function generateTopic(profileA: any, profileB: any): Promise<string> {
+  try {
+    const prompt = [
+      { role: "user", parts: [{ text: SYSTEM }] },
+      { role: "user", parts: [{ text: `A=${JSON.stringify(profileA)}\nB=${JSON.stringify(profileB)}\n出力は {"message":"..."} 形式で。`} ] },
+    ];
+    const res = await model.generateContent({ contents: prompt });
+    const msg = JSON.parse(res.response.text().trim()).message;
+    return msg;
+  } catch {
+    return "音楽はよく聴きますか？最近のお気に入りがあれば教えてください。";
+  }
+}
+```
+
+---
+
+## 8. API サンプル
+
+### QR
+```ts
+// app/api/qr/me/route.ts
+import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/session";
+import QRCode from "qrcode";
+
+export async function GET() {
+  const me = requireSession();
+  const url = `${process.env.APP_BASE_URL}/scan?sid=${me.userId}`;
+  const svg = await QRCode.toString(url, { type: "svg", errorCorrectionLevel: "M", margin: 0 });
+  return NextResponse.json({ url, svg });
+}
+```
+
+### スキャン
+```ts
+// app/api/scan/route.ts
+import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/session";
+import { prisma } from "@/lib/db";
+import { getProfile } from "@/lib/repos/profile";
+import { incrScanOutIn } from "@/lib/repos/counters";
+import { generateTopic } from "@/lib/llm";
+import { canScan } from "@/lib/cooldown";
+
+export async function POST(req: Request) {
+  try {
+    const me = requireSession();
+    const { scannedSid } = await req.json();
+    if (!scannedSid) return NextResponse.json({ error: "bad_request" }, { status: 400 });
+    if (me.userId === scannedSid) return NextResponse.json({ error: "self_scan" }, { status: 400 });
+
+    const scanned = await prisma.user.findUnique({ where: { id: scannedSid } });
+    if (!scanned) return NextResponse.json({ error: "user_not_found" }, { status: 404 });
+
+    const cd = await canScan(me.userId, scanned.id);
+    if (!cd.ok) return NextResponse.json({ error: "cooldown", message: "時間をおいてトライしてください" }, { status: 429 });
+
+    const [pa, pb] = await Promise.all([getProfile(me.userId), getProfile(scanned.id)]);
+    const message = await generateTopic(pa ?? {}, pb ?? {});
+    await incrScanOutIn(me.userId, scanned.id);
+
+    return NextResponse.json({ message });
+  } catch {
+    return NextResponse.json({ error: "internal" }, { status: 500 });
+  }
+}
+```
+
+### 実績
+```ts
+// app/api/metrics/me/route.ts
+import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/session";
+import { prisma } from "@/lib/db";
+
+export async function GET() {
+  const me = requireSession();
+  const c = await prisma.counters.findUnique({ where: { userId: me.userId } });
+  return NextResponse.json({
+    scanOut: c?.scanOutCount ?? 0,
+    scanIn:  c?.scanInCount  ?? 0,
+  });
+}
+```
+
+---
+
+## 9. テスト観点（POC）
+- ログイン/ログアウト：Cookie属性確認  
+- プロフィール：GET空→PUT保存→GET反映  
+- QR：URL＋SVGが返却されること  
+- スキャン：正常／自己／相手不在／クールダウン  
+- LLM：JSON形式の返却、失敗時はフォールバック  
+- 実績：カウントが正しく増加  
+
+---
+
+## 10. 実装順序（推奨）
+1. **認証システム** (署名付きCookie)
+   - `lib/session.ts`
+   - `api/auth/*`
+   - `middleware.ts`
+
+2. **プロフィール機能**
+   - `lib/repos/profile.ts`
+   - `api/profile/me`
+
+3. **QR生成・表示**
+   - `lib/qr.ts`
+   - `api/qr/me`
+   - フロント：QR表示
+
+4. **スキャン・話題提示**（核心機能）
+   - `lib/cooldown.ts`
+   - `lib/llm.ts`
+   - `lib/repos/counters.ts`
+   - `api/scan`
+   - フロント：カメラ・モーダル
+
+5. **実績表示**
+   - `api/metrics/me`
+   - フロント：数値表示
+
+6. **UI磨き・エラーハンドリング**
+
+---
+
+## 11. 受け入れ条件（POC Done）
+20–30人規模テストで：
+- ログイン・プロフィール保存成功率 ≥ 90%
+- スキャン→話題表示の成功率 ≥ 85%、平均応答 ≤ 1.5s
+- アンケート：「会話を始めやすくなった」**≥ 70%**
+- クールダウン中は 429 とトーストが正しく表示
+
+---
+
+## 12. デプロイ注意
+- DBは **Supabase** 無料枠でOK
+- Vercelには環境変数を必ず設定
+- KV（クールダウン共有）は本番スケール時に検討
+- HTTPS環境必須
+</file>
+
+<file path="next.config.js">
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    appDir: true,
+  },
+};
+
+module.exports = nextConfig;
+</file>
+
+<file path="package.json">
+{
+  "name": "propose-conversation-topic",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@prisma/client": "^5.19.1",
+    "next": "14.2.12",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.5",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.12",
+    "postcss": "^8.4.45",
+    "prisma": "^5.19.1",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5.6.2"
+  }
+}
+</file>
+
+<file path="postcss.config.js">
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+</file>
+
+<file path="prisma/schema.prisma">
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile      Profile?
+  counters     Counters?
+}
+
+model Profile {
+  userId      String   @id
+  profileJson Json
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Counters {
+  userId        String   @id
+  scanOutCount  Int      @default(0)
+  scanInCount   Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+</file>
+
+<file path="src/app/api/auth/login/route.ts">
+import { NextRequest, NextResponse } from "next/server";
+import { verifyPassword } from "@/lib/repos/users";
+import { setSessionCookie } from "@/lib/session";
+
+export async function POST(req: NextRequest) {
+  try {
+    const { userId, password } = await req.json();
+
+    if (!userId || !password) {
+      return NextResponse.json({ error: "bad_request" }, { status: 400 });
+    }
+
+    const user = await verifyPassword(userId, password);
+    if (!user) {
+      return NextResponse.json({ error: "invalid_credentials" }, { status: 401 });
+    }
+
+    const response = NextResponse.json({ ok: true });
+    setSessionCookie(response, user.id);
+
+    return response;
+  } catch (error) {
+    console.error("Login error:", error);
+    return NextResponse.json({ error: "internal" }, { status: 500 });
+  }
+}
+</file>
+
+<file path="src/app/api/auth/logout/route.ts">
+import { NextRequest, NextResponse } from "next/server";
+import { clearSessionCookie } from "@/lib/session";
+
+export async function POST(req: NextRequest) {
+  try {
+    const response = NextResponse.json({ ok: true });
+    clearSessionCookie(response);
+    return response;
+  } catch (error) {
+    console.error("Logout error:", error);
+    return NextResponse.json({ error: "internal" }, { status: 500 });
+  }
+}
+</file>
+
+<file path="src/app/api/auth/signup/route.ts">
+import { NextRequest, NextResponse } from "next/server";
+import { createUser, getUserByUserId } from "@/lib/repos/users";
+import { setSessionCookie } from "@/lib/session";
+
+export async function POST(req: NextRequest) {
+  try {
+    const { userId, password } = await req.json();
+
+    if (!userId || !password) {
+      return NextResponse.json({ error: "bad_request" }, { status: 400 });
+    }
+
+    const existingUser = await getUserByUserId(userId);
+    if (existingUser) {
+      return NextResponse.json({ error: "user_exists" }, { status: 409 });
+    }
+
+    const user = await createUser(userId, password);
+
+    const response = NextResponse.json({ ok: true });
+    setSessionCookie(response, user.id);
+
+    return response;
+  } catch (error) {
+    console.error("Signup error:", error);
+    return NextResponse.json({ error: "internal" }, { status: 500 });
+  }
+}
+</file>
+
+<file path="src/app/api/metrics/me/route.ts">
+import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/session";
+import { getCounters } from "@/lib/repos/counters";
+
+export async function GET() {
+  try {
+    const { userId } = requireSession();
+    const counters = await getCounters(userId);
+
+    return NextResponse.json({
+      scanOut: counters.scanOut,
+      scanIn: counters.scanIn,
+    });
+  } catch (error: any) {
+    if (error.message === "UNAUTH" || error.message === "EXPIRED" || error.message === "BADSIG") {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    console.error("Get metrics error:", error);
+    return NextResponse.json({ error: "internal" }, { status: 500 });
+  }
+}
+</file>
+
+<file path="src/app/api/profile/me/route.ts">
+import { NextRequest, NextResponse } from "next/server";
+import { requireSession } from "@/lib/session";
+import { getProfile, upsertProfile } from "@/lib/repos/profile";
+
+export async function GET() {
+  try {
+    const { userId } = requireSession();
+    const profile = await getProfile(userId);
+
+    if (!profile) {
+      return NextResponse.json({}, { status: 200 });
+    }
+
+    return NextResponse.json(profile);
+  } catch (error: any) {
+    if (error.message === "UNAUTH" || error.message === "EXPIRED" || error.message === "BADSIG") {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    console.error("Get profile error:", error);
+    return NextResponse.json({ error: "internal" }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const { userId } = requireSession();
+    const profileData = await req.json();
+
+    await upsertProfile(userId, profileData);
+
+    return NextResponse.json({ ok: true });
+  } catch (error: any) {
+    if (error.message === "UNAUTH" || error.message === "EXPIRED" || error.message === "BADSIG") {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    if (error.message.includes("Profile data too large")) {
+      return NextResponse.json({ error: "profile_too_large" }, { status: 400 });
+    }
+    console.error("Update profile error:", error);
+    return NextResponse.json({ error: "internal" }, { status: 500 });
+  }
+}
+</file>
+
+<file path="src/app/api/qr/me/route.ts">
+import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/session";
+import { generateQR } from "@/lib/qr";
+
+export async function GET() {
+  try {
+    const { userId } = requireSession();
+    const url = `${process.env.APP_BASE_URL}/scan?sid=${userId}`;
+    const svg = await generateQR(url);
+
+    return NextResponse.json({ url, svg });
+  } catch (error: any) {
+    if (error.message === "UNAUTH" || error.message === "EXPIRED" || error.message === "BADSIG") {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    console.error("QR generation error:", error);
+    return NextResponse.json({ error: "internal" }, { status: 500 });
+  }
+}
+</file>
+
+<file path="src/app/api/scan/route.ts">
+import { NextRequest, NextResponse } from "next/server";
+import { requireSession } from "@/lib/session";
+import { prisma } from "@/lib/db";
+import { getProfile } from "@/lib/repos/profile";
+import { incrScanOutIn } from "@/lib/repos/counters";
+import { generateTopic } from "@/lib/llm";
+import { canScan } from "@/lib/cooldown";
+
+export async function POST(req: NextRequest) {
+  try {
+    const { userId: scannerId } = requireSession();
+    const { scannedSid } = await req.json();
+
+    if (!scannedSid) {
+      return NextResponse.json({ error: "bad_request" }, { status: 400 });
+    }
+
+    if (scannerId === scannedSid) {
+      return NextResponse.json({ error: "self_scan" }, { status: 400 });
+    }
+
+    const scannedUser = await prisma.user.findUnique({
+      where: { id: scannedSid },
+    });
+
+    if (!scannedUser) {
+      return NextResponse.json({ error: "user_not_found" }, { status: 404 });
+    }
+
+    const cd = await canScan(scannerId, scannedUser.id);
+    if (!cd.ok) {
+      return NextResponse.json({
+        error: "cooldown",
+        message: "時間をおいてトライしてください"
+      }, { status: 429 });
+    }
+
+    const [profileA, profileB] = await Promise.all([
+      getProfile(scannerId),
+      getProfile(scannedUser.id),
+    ]);
+
+    const message = await generateTopic(profileA ?? {}, profileB ?? {});
+
+    await incrScanOutIn(scannerId, scannedUser.id);
+
+    return NextResponse.json({ message });
+  } catch (error: any) {
+    if (error.message === "UNAUTH" || error.message === "EXPIRED" || error.message === "BADSIG") {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    console.error("Scan error:", error);
+    return NextResponse.json({ error: "internal" }, { status: 500 });
+  }
+}
+</file>
+
+<file path="src/app/globals.css">
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+</file>
+
+<file path="src/app/layout.tsx">
+import './globals.css'
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata = {
+  title: 'QRプロフィール×話題提示',
+  description: '高校生向けQR交換アプリ',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="ja">
+      <body className={inter.className}>
+        <main className="min-h-screen bg-gray-50">
+          {children}
+        </main>
+      </body>
+    </html>
+  )
+}
+</file>
+
+<file path="src/app/page.tsx">
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+
+export default function HomePage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  return (
+    <div className="max-w-md mx-auto p-4">
+      <div className="text-center mb-8">
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">
+          QRプロフィール×話題提示
+        </h1>
+        <p className="text-gray-600">
+          QRコードを交換して、会話のきっかけを見つけよう！
+        </p>
+      </div>
+
+      {!isLoggedIn ? (
+        <div className="space-y-4">
+          <Link
+            href="/auth/login"
+            className="block w-full py-3 px-4 bg-blue-500 text-white text-center rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            ログイン
+          </Link>
+          <Link
+            href="/auth/signup"
+            className="block w-full py-3 px-4 bg-green-500 text-white text-center rounded-lg hover:bg-green-600 transition-colors"
+          >
+            新規登録
+          </Link>
+        </div>
+      ) : (
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">ログイン済み</p>
+          <Link
+            href="/home"
+            className="inline-block py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            ホームに進む
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+}
+</file>
+
+<file path="src/lib/cooldown.ts">
+const mem = new Map<string, number>();
+const WINDOW = 30_000; // 30 seconds
+
+export async function canScan(scannerId: string, scannedId: string) {
+  const key = `${scannerId}:${scannedId}`;
+  const now = Date.now();
+  const last = mem.get(key) ?? 0;
+
+  if (now - last < WINDOW) {
+    return { ok: false, waitMs: WINDOW - (now - last) };
+  }
+
+  mem.set(key, now);
+  return { ok: true };
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, time] of mem.entries()) {
+    if (now - time > WINDOW) {
+      mem.delete(key);
+    }
+  }
+}, WINDOW);
+</file>
+
+<file path="src/lib/db.ts">
+import { PrismaClient } from '@prisma/client';
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+</file>
+
+<file path="src/lib/llm.ts">
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+const SYSTEM = `あなたは高校生の初対面の会話を助けるアシスタントです。
+安全第一（政治/宗教/性/病気/金銭/個人特定は扱わない）。
+出力は敬体で1〜2文、最後は質問で終える。出力は1件のみ。`;
+
+export async function generateTopic(profileA: any, profileB: any): Promise<string> {
+  try {
+    const prompt = [
+      { role: "user", parts: [{ text: SYSTEM }] },
+      {
+        role: "user",
+        parts: [{
+          text: `A=${JSON.stringify(profileA)}\nB=${JSON.stringify(profileB)}\n出力は {"message":"..."} 形式で。`
+        }]
+      },
+    ];
+
+    const result = await model.generateContent({ contents: prompt });
+    const response = result.response;
+    const text = response.text().trim();
+
+    try {
+      const parsed = JSON.parse(text);
+      return parsed.message || "音楽はよく聴きますか？最近のお気に入りがあれば教えてください。";
+    } catch {
+      return "音楽はよく聴きますか？最近のお気に入りがあれば教えてください。";
+    }
+  } catch (error) {
+    console.error("LLM generation error:", error);
+    return "音楽はよく聴きますか？最近のお気に入りがあれば教えてください。";
+  }
+}
+</file>
+
+<file path="src/lib/qr.ts">
+import QRCode from "qrcode";
+
+export async function generateQR(url: string): Promise<string> {
+  try {
+    const svg = await QRCode.toString(url, {
+      type: "svg",
+      errorCorrectionLevel: "M",
+      margin: 0,
+      width: 256,
+    });
+    return svg;
+  } catch (error) {
+    console.error("QR generation error:", error);
+    throw new Error("Failed to generate QR code");
+  }
+}
+</file>
+
+<file path="src/lib/repos/counters.ts">
+import { prisma } from "@/lib/db";
+
+export async function getCounters(userId: string) {
+  const counters = await prisma.counters.findUnique({
+    where: { userId },
+  });
+
+  return {
+    scanOut: counters?.scanOutCount ?? 0,
+    scanIn: counters?.scanInCount ?? 0,
+  };
+}
+
+export async function incrScanOutIn(scannerId: string, scannedId: string) {
+  await prisma.$transaction([
+    prisma.counters.upsert({
+      where: { userId: scannerId },
+      create: {
+        userId: scannerId,
+        scanOutCount: 1,
+        scanInCount: 0,
+      },
+      update: {
+        scanOutCount: { increment: 1 },
+      },
+    }),
+    prisma.counters.upsert({
+      where: { userId: scannedId },
+      create: {
+        userId: scannedId,
+        scanOutCount: 0,
+        scanInCount: 1,
+      },
+      update: {
+        scanInCount: { increment: 1 },
+      },
+    }),
+  ]);
+}
+</file>
+
+<file path="src/lib/repos/profile.ts">
+import { prisma } from "@/lib/db";
+
+export async function getProfile(userId: string) {
+  const profile = await prisma.profile.findUnique({
+    where: { userId },
+  });
+
+  return profile ? profile.profileJson : null;
+}
+
+export async function upsertProfile(userId: string, profileData: any) {
+  const profileJson = JSON.stringify(profileData);
+
+  if (profileJson.length > 8192) {
+    throw new Error("Profile data too large (max 8KB)");
+  }
+
+  return await prisma.profile.upsert({
+    where: { userId },
+    create: {
+      userId,
+      profileJson: profileData,
+    },
+    update: {
+      profileJson: profileData,
+    },
+  });
+}
+</file>
+
+<file path="src/lib/repos/users.ts">
+import { prisma } from "@/lib/db";
+import crypto from "crypto";
+
+export async function createUser(userId: string, password: string) {
+  const passwordHash = crypto.createHash("sha256").update(password).digest("hex");
+
+  return await prisma.user.create({
+    data: {
+      userId,
+      passwordHash,
+    },
+  });
+}
+
+export async function getUserByUserId(userId: string) {
+  return await prisma.user.findUnique({
+    where: { userId },
+  });
+}
+
+export async function verifyPassword(userId: string, password: string) {
+  const user = await getUserByUserId(userId);
+  if (!user) return null;
+
+  const passwordHash = crypto.createHash("sha256").update(password).digest("hex");
+  if (user.passwordHash !== passwordHash) return null;
+
+  return user;
+}
+</file>
+
+<file path="src/lib/session.ts">
+import { cookies } from "next/headers";
+import crypto from "crypto";
+
+const NAME = "sid";
+const MAX_AGE = Number(process.env.SESSION_MAX_AGE_SECONDS || 86400);
+const SECRET = process.env.SESSION_SECRET!;
+
+export function issueTicket(userId: string) {
+  const exp = Math.floor(Date.now() / 1000) + MAX_AGE;
+  const payload = `${userId}.${exp}`;
+  const sig = crypto.createHmac("sha256", SECRET).update(payload).digest("hex");
+  return `${payload}.${sig}`;
+}
+
+export function setSessionCookie(resp: any, userId: string) {
+  const ticket = issueTicket(userId);
+  resp.cookies.set(NAME, ticket, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: MAX_AGE,
+  });
+}
+
+export function clearSessionCookie(resp: any) {
+  resp.cookies.set(NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: 0,
+  });
+}
+
+export function requireSession() {
+  const raw = cookies().get(NAME)?.value;
+  if (!raw) throw new Error("UNAUTH");
+
+  const parts = raw.split(".");
+  if (parts.length !== 3) throw new Error("INVALID_FORMAT");
+
+  const [userId, expStr, sig] = parts;
+  const exp = Number(expStr);
+  const now = Math.floor(Date.now() / 1000);
+
+  if (now > exp) throw new Error("EXPIRED");
+
+  const payload = `${userId}.${exp}`;
+  const expected = crypto.createHmac("sha256", SECRET).update(payload).digest("hex");
+
+  if (expected !== sig) throw new Error("BADSIG");
+
+  return { userId };
+}
+</file>
+
+<file path="src/middleware.ts">
+import { NextRequest, NextResponse } from "next/server";
+import { requireSession } from "@/lib/session";
+
+const protectedApiRoutes = [
+  "/api/profile",
+  "/api/qr",
+  "/api/scan",
+  "/api/metrics",
+];
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (protectedApiRoutes.some(route => pathname.startsWith(route))) {
+    try {
+      requireSession();
+    } catch (error) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ["/api/:path*"],
+};
+</file>
+
+<file path="tailwind.config.js">
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": ["dom", "dom.iterable", "es6"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+</file>
+
+</files>
