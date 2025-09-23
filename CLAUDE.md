@@ -434,7 +434,7 @@ export async function GET() {
    - `CameraScanner.tsx` - QRスキャナー
 
 ### ✅ Vercelデプロイ対応：
-- **動的実行設定**: 全APIルートに `export const dynamic = 'force-dynamic'` 追加
+- **動的実行設定**: 全APIルートに `export const runtime = 'nodejs'` と `export const dynamic = 'force-dynamic'` 追加
 - **環境変数ドキュメント**: DEPLOYMENT_FIX.md作成
 - **本番環境での動作確認済み**
 
@@ -444,14 +444,41 @@ export async function GET() {
 - **Profile.profileJson型**: PostgreSQLとの互換性のためString型で保持（JSON.parse/stringifyで処理）
 - **動的レンダリング強制**: cookies()使用によるビルドエラー対策
 
+### 🚀 最近の改善（2024年12月）：
+1. **QRスキャナー実装** (CameraScanner.tsx)
+   - react-qr-scanner導入
+   - モバイル対応（背面カメラ優先）
+   - タイムアウトエラー対策（ストリームクリーンアップ）
+
+2. **UX改善**
+   - QR読み取り直後に処理中モーダル表示
+   - TopicModalにローディング状態追加
+   - 振動フィードバック（対応デバイス）
+
+3. **LLM最適化** (lib/llm.ts)
+   - データサイズ削減（選択項目のみ送信で約1/10）
+   - 503エラー時のフォールバック処理
+   - 柔軟なレスポンス解析
+
 ### 🎉 POC完成状態：
 現在、全機能が実装済みでVercelデプロイも成功。以下が動作確認済み：
 - ユーザー登録・ログイン
 - プロフィール保存・取得
-- QRコード生成・表示
-- スキャン・話題生成（Gemini連携）
+- QRコード生成・表示（カメラスキャン対応）
+- スキャン・話題生成（Gemini連携、フォールバック付き）
 - 実績カウント表示
 - 30秒クールダウン機能
+
+### 🐛 既知の問題と残タスク：
+1. **Gemini API 503エラー頻発**
+   - 現状：フォールバック処理で対応中
+   - TODO: リトライロジックの実装
+   - TODO: 別のLLMモデルへの切り替え検討（gemini-pro等）
+   - TODO: レート制限の実装検討
+
+2. **パフォーマンス最適化**
+   - TODO: プロフィールデータのさらなる軽量化
+   - TODO: キャッシュ戦略の実装
 
 ---
 
