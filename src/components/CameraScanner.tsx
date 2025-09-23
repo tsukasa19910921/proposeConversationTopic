@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 
 const Scanner = dynamic(
@@ -23,45 +23,106 @@ export default function CameraScanner({ isOpen, onClose, onScan }: CameraScanner
   // fallback 用：front を使っているか？
   const [usingFront, setUsingFront] = useState(false);
 
+  // アクティブなストリームを追跡
+  const activeStreamRef = useRef<MediaStream | null>(null);
+
   // constraints 変更時に再マウントさせる key
   const scannerKey = useMemo(
-    () => `scanner-${deviceId ?? (usingFront ? 'front' : 'env')}`,
+    () => `scanner-${deviceId ?? (usingFront ? 'front' : 'env')}-${Date.now()}`,
     [deviceId, usingFront]
   );
 
+  // 全てのメディアストリームを停止する関数
+  const stopAllStreams = () => {
+    // activeStreamRef の解放
+    if (activeStreamRef.current) {
+      activeStreamRef.current.getTracks().forEach(track => {
+        track.stop();
+      });
+      activeStreamRef.current = null;
+    }
+
+    // 全てのビデオ要素を探してストリームを停止
+    const videos = document.querySelectorAll('video');
+    videos.forEach(video => {
+      const stream = (video as HTMLVideoElement).srcObject as MediaStream;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        (video as HTMLVideoElement).srcObject = null;
+      }
+    });
+  };
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      // モーダルを閉じる時にすべてのストリームを停止
+      stopAllStreams();
+      return;
+    }
+
     setError(null);
     setHasPermission(null);
     setDeviceId(undefined);
     setUsingFront(false);
 
-    // 1) 先に権限を取る（iOS の label 問題に対応）
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(async (stream) => {
-        setHasPermission(true);
-
-        // 2) カメラ列挙 → 背面候補優先
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videos = devices.filter(d => d.kind === 'videoinput');
-
-        const back = videos.find(d => /back|rear|environment/i.test(d.label));
-        if (back?.deviceId) {
-          setDeviceId(back.deviceId);
-          setUsingFront(false);
-        } else {
-          // 背面がなければ最初のカメラ（多くはフロント）
-          setDeviceId(videos[0]?.deviceId);
-          setUsingFront(true);
-        }
-
-        // 権限取得に使ったストリームは閉じる（Scanner に任せる）
-        stream.getTracks().forEach(t => t.stop());
+    // 少し遅延を入れて前のストリームが確実に解放されるのを待つ
+    const timeoutId = setTimeout(() => {
+      // 1) 先に権限を取る（iOS の label 問題に対応）
+      // 最初から背面カメラを要求
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
       })
-      .catch(() => {
-        setHasPermission(false);
-        setError('カメラへのアクセスが許可されていません');
-      });
+        .then(async (stream) => {
+          activeStreamRef.current = stream;
+          setHasPermission(true);
+
+          // 2) カメラ列挙 → 背面候補優先
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videos = devices.filter(d => d.kind === 'videoinput');
+
+          const back = videos.find(d => /back|rear|environment/i.test(d.label));
+          if (back?.deviceId) {
+            setDeviceId(back.deviceId);
+            setUsingFront(false);
+          } else if (videos.length > 0) {
+            // 背面がなければデフォルトはenvironment制約で任せる
+            // deviceIdは指定しない（facingModeで制御）
+            setDeviceId(undefined);
+            setUsingFront(false);
+          }
+
+          // 権限取得に使ったストリームは閉じる（Scanner に任せる）
+          stream.getTracks().forEach(t => t.stop());
+          activeStreamRef.current = null;
+        })
+        .catch((err) => {
+          // 背面カメラが利用できない場合はフロントカメラで再試行
+          console.warn('背面カメラ取得失敗、フロントカメラで再試行:', err);
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+            .then(async (stream) => {
+              activeStreamRef.current = stream;
+              setHasPermission(true);
+              const devices = await navigator.mediaDevices.enumerateDevices();
+              const videos = devices.filter(d => d.kind === 'videoinput');
+              if (videos.length > 0) {
+                setDeviceId(videos[0]?.deviceId);
+                setUsingFront(true);
+              }
+              stream.getTracks().forEach(t => t.stop());
+              activeStreamRef.current = null;
+            })
+            .catch(() => {
+              setHasPermission(false);
+              setError('カメラへのアクセスが許可されていません');
+            });
+        });
+    }, 100); // 100ms の遅延
+
+    // クリーンアップ
+    return () => {
+      clearTimeout(timeoutId);
+      stopAllStreams();
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -71,8 +132,13 @@ export default function CameraScanner({ isOpen, onClose, onScan }: CameraScanner
       const url = new URL(val);
       const sid = url.searchParams.get('sid');
       if (sid) {
+        // ストリームを停止してから閉じる
+        stopAllStreams();
         onScan(sid);
-        onClose();
+        // 少し遅延を入れてから閉じる
+        setTimeout(() => {
+          onClose();
+        }, 50);
         return;
       }
     } catch { /* not a URL */ }
@@ -81,6 +147,21 @@ export default function CameraScanner({ isOpen, onClose, onScan }: CameraScanner
 
   const handleError = (e: any) => {
     console.error('QR Scanner Error:', e?.name ?? e, e);
+
+    // タイムアウトエラーの場合
+    if (e?.message?.includes('timed out') || e?.message?.includes('timeout')) {
+      setError('カメラの起動に失敗しました。もう一度お試しください');
+      // ストリームをクリーンアップしてリトライ準備
+      stopAllStreams();
+      setTimeout(() => {
+        setError(null);
+        setHasPermission(null);
+        // 再初期化のためisOpenを切り替える
+        window.location.reload();
+      }, 2000);
+      return;
+    }
+
     // 代表的なエラー → 制約を緩めて再試行
     if (e?.name === 'OverconstrainedError' || e?.name === 'NotReadableError') {
       // フロント使用中なら制約を極力外してブラウザに選ばせる
@@ -104,7 +185,7 @@ export default function CameraScanner({ isOpen, onClose, onScan }: CameraScanner
   const constraints: MediaTrackConstraints | boolean =
     deviceId
       ? { deviceId: { exact: deviceId } }
-      : { facingMode: { ideal: usingFront ? 'user' : 'environment' } };
+      : { facingMode: usingFront ? 'user' : 'environment' };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 flex flex-col z-50">
