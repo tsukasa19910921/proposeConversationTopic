@@ -132,13 +132,19 @@ export default function CameraScanner({ isOpen, onClose, onScan }: CameraScanner
       const url = new URL(val);
       const sid = url.searchParams.get('sid');
       if (sid) {
+        // 即座に振動フィードバック（対応デバイスのみ）
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+
         // ストリームを停止してから閉じる
         stopAllStreams();
+
+        // カメラを即座に閉じる（モーダル表示を優先）
+        onClose();
+
+        // スキャン結果を親コンポーネントに通知
         onScan(sid);
-        // 少し遅延を入れてから閉じる
-        setTimeout(() => {
-          onClose();
-        }, 50);
         return;
       }
     } catch { /* not a URL */ }

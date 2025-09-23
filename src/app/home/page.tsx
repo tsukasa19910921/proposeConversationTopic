@@ -13,6 +13,7 @@ export default function HomePage() {
   const [topic, setTopic] = useState<string>('')
   const [showTopicModal, setShowTopicModal] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
+  const [isTopicLoading, setIsTopicLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; isVisible: boolean }>({
     message: '',
     type: 'success',
@@ -55,6 +56,11 @@ export default function HomePage() {
   }
 
   const handleScanResult = async (scannedSid: string) => {
+    // 即座に処理中モーダルを表示
+    setIsTopicLoading(true)
+    setTopic('')
+    setShowTopicModal(true)
+
     try {
       const response = await fetch('/api/scan', {
         method: 'POST',
@@ -67,21 +73,35 @@ export default function HomePage() {
       const data = await response.json()
 
       if (response.ok) {
+        // 成功: モーダルの内容を更新
         setTopic(data.message)
-        setShowTopicModal(true)
-        showToast('スキャン成功！', 'success')
+        setIsTopicLoading(false)
+        showToast('話題が見つかりました！', 'success')
       } else if (response.status === 429) {
-        showToast(data.message || '時間をおいてトライしてください', 'warning')
+        // クールダウン: モーダルを閉じてトーストで通知
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
+        showToast(data.message || '時間をおいてトライしてください ⏳', 'warning')
       } else if (response.status === 401) {
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
         router.push('/auth/login')
       } else if (response.status === 400 && data.error === 'self_scan') {
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
         showToast('自分のQRコードはスキャンできません', 'warning')
       } else if (response.status === 404) {
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
         showToast('ユーザーが見つかりませんでした', 'error')
       } else {
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
         showToast('スキャンに失敗しました', 'error')
       }
     } catch (error) {
+      setIsTopicLoading(false)
+      setShowTopicModal(false)
       showToast('ネットワークエラーが発生しました', 'error')
     }
   }
@@ -166,7 +186,13 @@ export default function HomePage() {
       <TopicModal
         isOpen={showTopicModal}
         message={topic}
-        onClose={() => setShowTopicModal(false)}
+        isBusy={isTopicLoading}
+        title={isTopicLoading ? 'QRコード読み取り完了' : '会話の話題'}
+        subtitle={isTopicLoading ? 'AIが話題を生成しています' : undefined}
+        onClose={() => {
+          setShowTopicModal(false)
+          setIsTopicLoading(false)
+        }}
       />
 
       {/* トースト */}
