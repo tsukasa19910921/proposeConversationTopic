@@ -3,10 +3,6 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Force dynamic execution (required for cookies)
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 import { NextRequest, NextResponse } from "next/server";
 import { clearSessionCookie } from "@/lib/session";
 
