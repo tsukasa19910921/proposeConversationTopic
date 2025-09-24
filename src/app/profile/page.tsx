@@ -4,39 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Navigation from '@/components/Navigation'
 import Toast from '@/components/Toast'
-
-const TOPICS = {
-  sports: {
-    label: 'スポーツ',
-    icon: '⚽',
-    options: ['野球', 'サッカー', '卓球', 'テニス', 'バスケットボール', 'バレーボール', 'ゴルフ', 'その他']
-  },
-  music: {
-    label: '音楽',
-    icon: '🎵',
-    options: ['J-POP', 'K-POP', 'ロック', 'ジャズ', 'クラシック', 'アニソン', 'ボカロ', 'その他']
-  },
-  food: {
-    label: '食事',
-    icon: '🍕',
-    options: ['和食', '洋食', '中華', 'イタリアン', 'ファストフード', 'お菓子作り', 'カフェ', 'その他']
-  },
-  movies: {
-    label: '映画・ドラマ',
-    icon: '🎬',
-    options: ['邦画', '洋画', '韓国ドラマ', 'アニメ', 'ドキュメンタリー', 'コメディ', 'ホラー', 'その他']
-  },
-  games: {
-    label: 'ゲーム',
-    icon: '🎮',
-    options: ['RPG', 'アクション', 'パズル', 'シミュレーション', 'FPS', 'モバイルゲーム', 'ボードゲーム', 'その他']
-  },
-  books: {
-    label: '読書',
-    icon: '📚',
-    options: ['小説', '漫画', 'ライトノベル', 'ビジネス書', '自己啓発', '歴史', '科学', 'その他']
-  }
-}
+import { TOPICS } from '@/lib/topics'
+import { expandProfileForUI, packProfileFromUI } from '@/lib/profile-shape'
+import type { UIProfile } from '@/lib/profile-shape'
 
 interface ProfileData {
   [topicId: string]: {
@@ -48,7 +18,7 @@ interface ProfileData {
 }
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<ProfileData>({})
+  const [profile, setProfile] = useState<UIProfile>({})
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -63,19 +33,6 @@ export default function ProfilePage() {
     fetchProfile()
   }, [])
 
-  const initializeProfileStructure = () => {
-    const initialProfile: ProfileData = {}
-    Object.keys(TOPICS).forEach(topicId => {
-      initialProfile[topicId] = {}
-      TOPICS[topicId as keyof typeof TOPICS].options.forEach(option => {
-        initialProfile[topicId][option] = {
-          selected: false,
-          freeText: ''
-        }
-      })
-    })
-    return initialProfile
-  }
 
   const fetchProfile = async () => {
     try {
@@ -88,30 +45,13 @@ export default function ProfilePage() {
 
       if (response.ok) {
         const data = await response.json()
-        const initialProfile = initializeProfileStructure()
-
-        if (data && Object.keys(data).length > 0) {
-          Object.keys(data).forEach(topicId => {
-            if (initialProfile[topicId] && data[topicId]) {
-              Object.keys(data[topicId]).forEach(option => {
-                if (initialProfile[topicId][option]) {
-                  initialProfile[topicId][option] = {
-                    selected: data[topicId][option]?.selected || false,
-                    freeText: data[topicId][option]?.freeText || ''
-                  }
-                }
-              })
-            }
-          })
-        }
-
-        setProfile(initialProfile)
+        setProfile(expandProfileForUI(data)) // 現行UIにだけ反映
       } else {
-        setProfile(initializeProfileStructure())
+        setProfile(expandProfileForUI({})) // 空をUI既定に
       }
     } catch (error) {
       showToast('プロフィールの取得に失敗しました', 'error')
-      setProfile(initializeProfileStructure())
+      setProfile(expandProfileForUI({}))
     } finally {
       setIsLoading(false)
     }
@@ -153,10 +93,10 @@ export default function ProfilePage() {
 
   const toggleTopic = (topicId: string) => {
     setExpandedTopics(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(topicId)) {
-        newSet.delete(topicId)
-      } else {
+      const newSet = new Set<string>()
+      // 現在開いているものをクリックした場合は閉じる
+      // そうでない場合は、クリックしたものだけを開く
+      if (!prev.has(topicId)) {
         newSet.add(topicId)
       }
       return newSet
@@ -171,12 +111,13 @@ export default function ProfilePage() {
     setIsSaving(true)
 
     try {
+      const packed = packProfileFromUI(profile) // 最小構造で送る
       const response = await fetch('/api/profile/me', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(profile),
+        body: JSON.stringify(packed),
       })
 
       if (response.status === 401) {
@@ -186,6 +127,10 @@ export default function ProfilePage() {
 
       if (response.ok) {
         showToast('プロフィールを保存しました', 'success')
+        // 保存成功後、少し待ってからホーム画面へ遷移
+        setTimeout(() => {
+          router.push('/home')
+        }, 1000)
       } else {
         showToast('保存に失敗しました', 'error')
       }

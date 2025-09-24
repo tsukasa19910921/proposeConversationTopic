@@ -6,6 +6,7 @@ export const revalidate = 0;
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/session";
 import { getProfile, upsertProfile } from "@/lib/repos/profile";
+import { packProfileFromUI, expandProfileForUI } from "@/lib/profile-shape";
 
 export async function GET() {
   try {
@@ -29,9 +30,12 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   try {
     const { userId } = requireSession();
-    const profileData = await req.json();
+    const input = await req.json();
 
-    await upsertProfile(userId, profileData);
+    // 入力を正規化: まず現行UIに存在するものだけに正規化してから、最小構造にパック
+    const packed = packProfileFromUI(expandProfileForUI(input));
+
+    await upsertProfile(userId, packed);
 
     return NextResponse.json({ ok: true });
   } catch (error: any) {

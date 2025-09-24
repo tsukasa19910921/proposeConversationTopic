@@ -7,31 +7,28 @@ const SYSTEM = `あなたは高校生の初対面の会話を助けるアシス�
 安全第一（政治/宗教/性/病気/金銭/個人特定は扱わない）。
 出力は敬体で1〜2文、最後は質問で終える。出力は1件のみ。`;
 
-// プロフィールから選択された項目のみを抽出
-function extractSelectedInterests(profile: any): any {
-  const simplified: any = {};
-
-  for (const [category, items] of Object.entries(profile || {})) {
-    const selected = Object.entries(items as any)
-      .filter(([_, data]: any) => data.selected)
-      .map(([name, data]: any) => ({
-        name,
-        text: data.freeText || ''
-      }));
-
-    if (selected.length > 0) {
-      simplified[category] = selected;
-    }
+// プロフィールを確認（Packed形式のみ対応）
+function validatePackedProfile(profile: any): any {
+  // Packed形式（配列）であることを確認
+  if (!profile || typeof profile !== 'object') {
+    return {};
   }
 
-  return simplified;
+  // すべての値が配列であることを確認
+  const isPacked = Object.values(profile).every(v => Array.isArray(v));
+  if (!isPacked) {
+    console.warn('Profile is not in packed format, returning empty');
+    return {};
+  }
+
+  return profile;
 }
 
 export async function generateTopic(profileA: any, profileB: any): Promise<string> {
   try {
-    // 選択された項目のみを抽出してデータを軽量化
-    const simplifiedA = extractSelectedInterests(profileA);
-    const simplifiedB = extractSelectedInterests(profileB);
+    // Packed形式のプロフィールを検証
+    const simplifiedA = validatePackedProfile(profileA);
+    const simplifiedB = validatePackedProfile(profileB);
 
     // デバッグ用ログ
     console.log("=== LLM Debug ===");
@@ -85,8 +82,8 @@ export async function generateTopic(profileA: any, profileB: any): Promise<strin
     // 503エラーの場合、プロフィールから直接話題を生成
     if ((error as any)?.status === 503) {
       console.log("Using fallback due to 503 error");
-      const simplifiedA = extractSelectedInterests(profileA);
-      const simplifiedB = extractSelectedInterests(profileB);
+      const simplifiedA = validatePackedProfile(profileA);
+      const simplifiedB = validatePackedProfile(profileB);
 
       // 共通の興味を探す
       for (const category in simplifiedA) {
