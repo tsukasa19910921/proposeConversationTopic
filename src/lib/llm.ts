@@ -5,7 +5,7 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const SYSTEM = `あなたは高校生の初対面の会話を助けるアシスタントです。
 安全第一（政治/宗教/性/病気/金銭/個人特定は扱わない）。
-出力は敬体で1〜2文、最後は質問で終える。出力は1件のみ。
+出力は敬体で必ず1文のみ、20文字以上40文字以内、最後は質問で終える。
 「ユーザーAさん」「ユーザーBさん」という表現は使わず、「お二人」「二人とも」など自然な表現を使う。`;
 
 // プロフィールを確認（Packed形式のみ対応）
@@ -23,6 +23,51 @@ function validatePackedProfile(profile: any): any {
   }
 
   return profile;
+}
+
+// リトライ機能付きのGemini API呼び出し
+async function generateContentWithRetry(
+  prompt: any,
+  maxRetries: number = 3,
+  initialDelay: number = 1000
+): Promise<any> {
+  let lastError: any;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt + 1}/${maxRetries} to generate content...`);
+
+      const result = await model.generateContent({
+        contents: prompt,
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.7,  // 安定性向上のため温度を設定
+          maxOutputTokens: 256,  // 出力トークン数を制限
+        }
+      });
+
+      // 成功したら結果を返す
+      return result;
+
+    } catch (error: any) {
+      lastError = error;
+      console.error(`Attempt ${attempt + 1} failed:`, error?.message || error);
+
+      // 503エラーの場合のみリトライ
+      if (error?.status === 503 && attempt < maxRetries - 1) {
+        const delay = initialDelay * Math.pow(2, attempt); // 指数バックオフ
+        console.log(`Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+
+      // 503以外のエラーまたは最後の試行の場合はエラーを投げる
+      throw error;
+    }
+  }
+
+  // すべての試行が失敗した場合
+  throw lastError;
 }
 
 export async function generateTopic(profileA: any, profileB: any): Promise<string> {
@@ -45,12 +90,12 @@ export async function generateTopic(profileA: any, profileB: any): Promise<strin
 プロフィール1: ${JSON.stringify(simplifiedA)}
 プロフィール2: ${JSON.stringify(simplifiedB)}
 
-二人の共通の興味を見つけて、自然な会話の話題を1つ提案してください。
-もし共通の趣味がない場合は、両者の趣味がクロスオーバーするテーマの話題を1つ提案してください。
-・「お二人とも」「二人で」など自然な表現を使う
-・敬体で1-2文、最後は質問で終わること
-・「ユーザーA」「ユーザーB」という表現は禁止
-・センシティブ（政治/宗教/性/病気/金銭/個人特定/連絡先）に触れない
+二人の共通の興味を見つけて、短い会話の話題を1つ提案してください。
+重要な制約：
+・必ず1文のみ（長くても40文字以内）
+・簡潔で自然な質問形式
+・「お二人とも」より短い表現を使う
+・例：「野球はどのチームが好きですか？」（16文字）
 
 出力形式: {"message": "話題の内容"}`;
 
@@ -59,13 +104,10 @@ export async function generateTopic(profileA: any, profileB: any): Promise<strin
     ];
 
     console.log("Sending simplified prompt to Gemini...");
-    // JSONを強制出力するよう設定
-    const result = await model.generateContent({
-      contents: prompt,
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
-    });
+
+    // リトライ機能付きでAPI呼び出し
+    const result = await generateContentWithRetry(prompt);
+
     const response = result.response;
     let text = response.text().trim();
     console.log("Raw response from Gemini:", text);
