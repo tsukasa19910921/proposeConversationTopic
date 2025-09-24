@@ -82,6 +82,16 @@ export default function HomePage() {
         setIsTopicLoading(false)
         setShowTopicModal(false)
         showToast(data.message || '時間をおいてトライしてください ⏳', 'warning')
+      } else if (response.status === 503) {
+        // サービス一時利用不可
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
+        showToast(data.message || 'サービスが一時的に利用できません。少し時間をおいてから再度お試しください。', 'warning')
+      } else if (response.status === 500 && data.error === 'generation_failed') {
+        // 生成失敗
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
+        showToast(data.message || '話題の生成に失敗しました。もう一度QRコードを読み取ってください。', 'warning')
       } else if (response.status === 401) {
         setIsTopicLoading(false)
         setShowTopicModal(false)

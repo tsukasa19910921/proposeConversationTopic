@@ -1,5 +1,5 @@
 const mem = new Map<string, number>();
-const WINDOW = 30_000; // 30 seconds
+const WINDOW = 5_000; // 5 seconds - 過剰アクセス防止用の短いクールダウン
 
 export async function canScan(scannerId: string, scannedId: string) {
   const key = `${scannerId}:${scannedId}`;

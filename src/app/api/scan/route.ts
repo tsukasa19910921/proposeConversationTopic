@@ -45,7 +45,30 @@ export async function POST(req: NextRequest) {
       getProfile(scannedUser.id),
     ]);
 
-    const message = await generateTopic(profileA ?? {}, profileB ?? {});
+    let message: string;
+    try {
+      message = await generateTopic(profileA ?? {}, profileB ?? {});
+    } catch (llmError: any) {
+      console.error("LLM error in scan:", llmError);
+
+      // サービス利用不可の場合
+      if (llmError.message === "SERVICE_UNAVAILABLE") {
+        return NextResponse.json({
+          error: "service_unavailable",
+          message: "サービスが一時的に利用できません。少し時間をおいてから再度お試しください。"
+        }, { status: 503 });
+      }
+
+      // その他の生成エラー
+      if (llmError.message === "GENERATION_FAILED") {
+        return NextResponse.json({
+          error: "generation_failed",
+          message: "話題の生成に失敗しました。もう一度QRコードを読み取ってください。"
+        }, { status: 500 });
+      }
+
+      throw llmError; // 予期しないエラーは再スロー
+    }
 
     await incrScanOutIn(scannerId, scannedUser.id);
 
