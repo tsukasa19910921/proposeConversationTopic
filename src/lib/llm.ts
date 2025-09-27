@@ -1,12 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-const SYSTEM = `あなたは高校生の初対面の会話を助けるアシスタントです。
-安全第一（政治/宗教/性/病気/金銭/個人特定は扱わない）。
-出力は敬体で必ず1文のみ、20文字以上40文字以内、最後は質問で終える。
-「ユーザーAさん」「ユーザーBさん」という表現は使わず、「お二人」「二人とも」など自然な表現を使う。`;
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
 // プロフィールを確認（Packed形式のみ対応）
 function validatePackedProfile(profile: any): any {
@@ -82,24 +77,44 @@ export async function generateTopic(profileA: any, profileB: any): Promise<strin
     console.log("Simplified Profile B:", JSON.stringify(simplifiedB, null, 2));
     console.log("API Key exists:", !!process.env.GOOGLE_GEMINI_API_KEY);
 
-    // より簡潔なプロンプト
+    // システムプロンプトの設定
+    const systemPrompt = `あなたは高校生の初対面会話を支援するアシスタントです。
+安全で楽しい話題のみ提案し、政治・宗教・個人情報は避けてください。
+出力は必ずJSON形式: {"message": "話題内容"}`;
+
+    // 改善されたプロンプト
     const promptText = `
-以下は二人の高校生のプロフィールです。主に趣味や好きなことが列挙されています。
-データ形式: カテゴリごとに選択した項目の配列。name=選択項目、text=自由記述（空の場合あり）
+## タスク
+二人の高校生プロフィールから会話の話題を1つ提案
 
-プロフィール1: ${JSON.stringify(simplifiedA)}
-プロフィール2: ${JSON.stringify(simplifiedB)}
+## プロフィールデータ
+- プロフィール1: ${JSON.stringify(simplifiedA)}
+- プロフィール2: ${JSON.stringify(simplifiedB)}
+- 形式: {カテゴリ: [{name: "選択項目", text: "自由記述"}]}
 
-二人の共通の興味を見つけて、短い会話の話題を1つ提案してください。
-重要な制約：
-・必ず1文のみ（長くても40文字以内）
-・簡潔で自然な質問形式
-・「お二人とも」より短い表現を使う
-・例：「野球はどのチームが好きですか？」（16文字）
+## 話題生成ルール
+1. **共通点発見時**: "おふたりは○○が共通点なようです。[具体的な質問]"
+2. **共通点なし時**: 両プロフィールを組み合わせた新しい話題
+3. **出力要件**:
+   - 1-2文で完結
+   - 質問形式で終わる
+   - 高校生らしい自然な表現
+
+## クロスオーバー話題例
+- スポーツ×音楽 → "運動時のBGMや応援歌"
+- 読書×映画 → "原作と映画化作品の比較"
+- 料理×アニメ → "アニメに出てくる料理の再現"
+- ゲーム×勉強 → "ゲームで学んだことや集中力向上"
+- アート×テクノロジー → "デジタルアートや創作ツール"
+
+## 例
+共通点あり: "おふたりは音楽が共通点なようです。最近よく聴くアーティストはありますか？"
+クロスオーバー: "スポーツをされる方と読書好きの方ですね。体を動かした後の本はいかがですか？"
 
 出力形式: {"message": "話題の内容"}`;
 
     const prompt = [
+      { role: "user", parts: [{ text: systemPrompt }] },
       { role: "user", parts: [{ text: promptText }] }
     ];
 
