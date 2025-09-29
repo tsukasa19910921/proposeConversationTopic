@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 export default function LoginPage() {
@@ -10,6 +10,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const nextPath = searchParams.get('next') || '/home'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,7 +30,7 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok) {
-        router.push('/home')
+        router.push(nextPath)
       } else {
         setError(data.error === 'invalid_credentials' ? 'ユーザーIDまたはパスワードが正しくありません' : 'ログインに失敗しました')
       }

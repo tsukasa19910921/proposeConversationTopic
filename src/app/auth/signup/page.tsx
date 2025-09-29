@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 export default function SignupPage() {
@@ -11,6 +11,7 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,7 +41,7 @@ export default function SignupPage() {
       const data = await response.json()
 
       if (response.ok) {
-        router.push('/home')
+        router.push('/profile')
       } else {
         setError(data.error === 'user_exists' ? 'このユーザーIDは既に使用されています' : '新規登録に失敗しました')
       }
