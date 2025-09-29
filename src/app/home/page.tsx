@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navigation from '@/components/Navigation'
 import TopicModal from '@/components/TopicModal'
 import Toast from '@/components/Toast'
 import CameraScanner from '@/components/CameraScanner'
 
-export default function HomePage() {
+function HomeContent() {
   const [qrData, setQrData] = useState<{ url: string; svg: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [topic, setTopic] = useState<string>('')
@@ -225,5 +225,20 @@ export default function HomePage() {
         onClose={hideToast}
       />
     </div>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-md mx-auto p-4 pb-20 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+          <p className="text-gray-600">読み込み中...</p>
+        </div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   )
 }
