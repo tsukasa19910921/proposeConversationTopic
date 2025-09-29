@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Navigation from '@/components/Navigation'
 import TopicModal from '@/components/TopicModal'
 import Toast from '@/components/Toast'
@@ -20,6 +20,7 @@ export default function HomePage() {
     isVisible: false
   })
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     fetchQR()
@@ -55,7 +56,7 @@ export default function HomePage() {
     setToast(prev => ({ ...prev, isVisible: false }))
   }
 
-  const handleScanResult = async (scannedSid: string) => {
+  const handleScanResult = useCallback(async (scannedSid: string) => {
     // 即座に処理中モーダルを表示
     setIsTopicLoading(true)
     setTopic('')
@@ -114,7 +115,18 @@ export default function HomePage() {
       setShowTopicModal(false)
       showToast('ネットワークエラーが発生しました', 'error')
     }
-  }
+  }, [router])
+
+  // URL経由のスキャン処理
+  useEffect(() => {
+    const scannedSid = searchParams.get('scannedSid')
+    if (scannedSid && !isLoading) {
+      // URLパラメータをクリア
+      router.replace('/home')
+      // スキャン処理を実行
+      handleScanResult(scannedSid)
+    }
+  }, [searchParams, isLoading, router, handleScanResult])
 
   const handleLogout = async () => {
     try {

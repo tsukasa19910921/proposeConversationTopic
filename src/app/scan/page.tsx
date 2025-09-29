@@ -7,13 +7,13 @@ function ScanContent() {
   const router = useRouter()
   const sp = useSearchParams()
   const sid = sp.get('sid') || ''
-  const [state, setState] = useState<'checking'|'need-login'|'need-profile'|'scanning'|'done'|'error'>('checking')
-  const [message, setMessage] = useState('')
+  const [state, setState] = useState<'checking'|'need-login'|'need-profile'|'redirecting'>('checking')
 
   useEffect(() => {
     const run = async () => {
       if (!sid) {
-        setState('error')
+        // sidがない場合はホームにリダイレクト
+        router.push('/home')
         return
       }
 
@@ -30,44 +30,20 @@ function ScanContent() {
         return
       }
 
-      setState('scanning')
-      const res = await fetch('/api/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scannedSid: sid })
-      })
-
-      const data = await res.json().catch(() => ({}))
-
-      if (res.ok) {
-        setMessage(data.message || '話題が見つかりました。ホームで続けましょう。')
-        setState('done')
-      } else if (res.status === 429) {
-        setMessage(data.message || '時間をおいてトライしてください')
-        setState('done')
-      } else if (res.status === 400 && data.error === 'self_scan') {
-        setMessage('自分のQRコードはスキャンできません')
-        setState('done')
-      } else if (res.status === 404) {
-        setMessage('ユーザーが見つかりませんでした')
-        setState('done')
-      } else if (res.status === 503) {
-        setMessage('サービスが一時的に利用できません。少し時間をおいて再試行してください。')
-        setState('done')
-      } else {
-        setState('error')
-      }
+      // ホームページにリダイレクトしてモーダル表示
+      setState('redirecting')
+      router.push(`/home?scannedSid=${encodeURIComponent(sid)}`)
     }
 
     run()
   }, [sid])
 
-  if (state === 'checking' || state === 'scanning') {
+  if (state === 'checking' || state === 'redirecting') {
     return (
       <div className="max-w-md mx-auto p-6">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <h1 className="text-xl font-bold mb-4">読み取り中...</h1>
+          <h1 className="text-xl font-bold mb-4">{state === 'redirecting' ? 'ホームへ移動中...' : '読み取り中...'}</h1>
           <p className="text-gray-600">処理を行っています。しばらくお待ちください。</p>
         </div>
       </div>
@@ -94,12 +70,6 @@ function ScanContent() {
           className="block w-full text-center py-3 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors"
         >
           新規登録
-        </a>
-        <a
-          href="/"
-          className="block w-full text-center py-3 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-        >
-          ホームへ
         </a>
       </div>
     )
@@ -129,41 +99,8 @@ function ScanContent() {
     )
   }
 
-  if (state === 'done') {
-    return (
-      <div className="max-w-md mx-auto p-6 space-y-4">
-        <div className="text-center mb-6">
-          <div className="text-4xl mb-4">💬</div>
-          <h1 className="text-xl font-bold">話題が見つかりました</h1>
-        </div>
-        <div className="bg-white rounded-lg p-4 shadow border">
-          <p className="text-gray-800">{message}</p>
-        </div>
-        <a
-          href="/home"
-          className="block w-full text-center py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-        >
-          ホームへ
-        </a>
-      </div>
-    )
-  }
-
-  return (
-    <div className="max-w-md mx-auto p-6 space-y-4">
-      <div className="text-center mb-6">
-        <div className="text-4xl mb-4">⚠️</div>
-        <h1 className="text-xl font-bold">読み取りに失敗しました</h1>
-        <p className="text-gray-600 mt-2">QRコードが無効か、エラーが発生しました。</p>
-      </div>
-      <a
-        href="/"
-        className="block w-full text-center py-3 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-      >
-        ホームへ
-      </a>
-    </div>
-  )
+  // 他の状態では何も表示しない（リダイレクト処理中）
+  return null
 }
 
 export default function ScanLandingPage() {
