@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
@@ -11,7 +11,7 @@ declare global {
   }
 }
 
-export default function ClientAnalytics() {
+function Analytics() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -23,4 +23,12 @@ export default function ClientAnalytics() {
   }, [pathname, searchParams]);
 
   return null;
+}
+
+export default function ClientAnalytics() {
+  return (
+    <Suspense fallback={null}>
+      <Analytics />
+    </Suspense>
+  );
 }
