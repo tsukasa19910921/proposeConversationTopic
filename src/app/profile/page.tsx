@@ -259,16 +259,18 @@ export default function ProfilePage() {
                           <label className="text-sm font-medium text-purple-700 mb-1 block">
                             {option}の詳細
                           </label>
-                          <textarea
+                          <input
+                            type="text"
                             value={profile[topicId][option].freeText}
                             onChange={(e) => handleFreeTextChange(topicId, option, e.target.value)}
-                            placeholder={`${option}について詳しく教えてください...`}
-                            className="w-full h-20 px-3 py-2 text-sm
+                            placeholder="詳しく教えてください"
+                            className="w-full h-10 px-3 py-2 text-sm
                                      backdrop-blur-lg bg-white/60 border border-white/50
                                      rounded-lg shadow-inner
                                      focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/80
-                                     transition-all duration-300 resize-none"
+                                     transition-all duration-300"
                             maxLength={100}
+                            style={{ fontSize: '16px' }}
                           />
                           <p className="text-xs text-purple-600 mt-1 text-right font-medium">
                             {profile[topicId][option].freeText.length}/100
