@@ -29,7 +29,9 @@ function HomeContent() {
 
   const fetchQR = async () => {
     try {
-      const response = await fetch('/api/qr/me')
+      const response = await fetch('/api/qr/me', {
+        credentials: 'include', // Added for better cookie handling
+      })
 
       if (response.status === 401) {
         router.push('/auth/login')
@@ -69,6 +71,7 @@ function HomeContent() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Added for better cookie handling
         body: JSON.stringify({ scannedSid }),
       })
 
@@ -131,7 +134,10 @@ function HomeContent() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' })
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include', // Added for better cookie handling
+      })
       router.push('/')
     } catch (error) {
       showToast('ログアウトに失敗しました', 'error')

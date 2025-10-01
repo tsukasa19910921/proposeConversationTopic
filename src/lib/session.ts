@@ -17,7 +17,7 @@ export function setSessionCookie(resp: any, userId: string) {
   resp.cookies.set(NAME, ticket, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "lax",  // Changed from "strict" to "lax" for mobile compatibility
     path: "/",
     maxAge: MAX_AGE,
   });
@@ -27,7 +27,7 @@ export function clearSessionCookie(resp: any) {
   resp.cookies.set(NAME, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "lax",  // Changed from "strict" to "lax" for consistency
     path: "/",
     maxAge: 0,
   });

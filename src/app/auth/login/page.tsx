@@ -25,13 +25,15 @@ function LoginForm() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Added for better cookie handling
         body: JSON.stringify({ userId, password }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        router.push(nextPath)
+        // Use window.location for full page reload to ensure cookies are sent
+        window.location.assign(nextPath)
       } else {
         setError(data.error === 'invalid_credentials' ? 'ユーザーIDまたはパスワードが正しくありません' : 'ログインに失敗しました')
       }

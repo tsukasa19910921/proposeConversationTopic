@@ -27,7 +27,9 @@ export default function MetricsPage() {
 
   const fetchMetrics = async () => {
     try {
-      const response = await fetch('/api/metrics/me')
+      const response = await fetch('/api/metrics/me', {
+        credentials: 'include', // Added for better cookie handling
+      })
 
       if (response.status === 401) {
         router.push('/auth/login')

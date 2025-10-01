@@ -36,13 +36,15 @@ function SignupForm() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Added for better cookie handling
         body: JSON.stringify({ userId, password }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        router.push('/profile')
+        // Use window.location for full page reload to ensure cookies are sent
+        window.location.assign('/profile')
       } else {
         setError(data.error === 'user_exists' ? 'このユーザーIDは既に使用されています' : '新規登録に失敗しました')
       }

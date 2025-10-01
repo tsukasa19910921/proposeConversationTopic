@@ -20,7 +20,9 @@ function ScanContent() {
       }
 
       // 認証とプロフィール完了状態を確認
-      const me = await fetch('/api/me')
+      const me = await fetch('/api/me', {
+        credentials: 'include', // Added for better cookie handling
+      })
       if (me.status === 401) {
         setState('need-login')
         return

@@ -37,7 +37,9 @@ export default function ProfilePage() {
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch('/api/profile/me')
+      const response = await fetch('/api/profile/me', {
+        credentials: 'include', // Added for better cookie handling
+      })
 
       if (response.status === 401) {
         router.push('/auth/login')
@@ -118,6 +120,7 @@ export default function ProfilePage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Added for better cookie handling
         body: JSON.stringify(packed),
       })
 
