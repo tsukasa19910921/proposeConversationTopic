@@ -93,46 +93,46 @@ export default function MetricsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
-      <div className="max-w-md mx-auto p-4 pb-32">
-        <div className="flex justify-between items-center mb-6 pt-4">
+      <div className="max-w-md mx-auto p-4 pb-20">
+        <div className="flex justify-between items-center mb-4 pt-4">
           <div>
-            <h1 className="text-2xl font-bold text-white mb-1 drop-shadow-lg">実績</h1>
-            <p className="text-white/80 text-sm">あなたの交流記録</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">実績</h1>
+            <p className="text-white/80 text-xs sm:text-sm">あなたの交流記録</p>
           </div>
           <button
             onClick={fetchMetrics}
-            className="p-3 backdrop-blur-lg bg-white/20 rounded-full
+            className="p-2.5 backdrop-blur-lg bg-white/20 rounded-full
                      hover:bg-white/30 transition-all duration-300 transform hover:scale-110
                      shadow-lg group"
           >
-            <RefreshCw className="w-5 h-5 text-white group-hover:rotate-180 transition-transform duration-500" />
+            <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:rotate-180 transition-transform duration-500" />
           </button>
         </div>
 
         {/* 実績カード */}
         <div className="space-y-4">
           {/* 読み取り回数 */}
-          <div className="backdrop-blur-lg bg-white/90 rounded-2xl shadow-xl p-6
-                        transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl">
+          <div className="backdrop-blur-lg bg-white/90 rounded-xl shadow-xl p-4
+                        transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className="p-3 bg-gradient-to-r from-purple-500 to-teal-500 rounded-full shadow-lg">
-                    <QrCode className="w-6 h-6 text-white" />
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className="p-2 bg-gradient-to-r from-purple-500 to-teal-500 rounded-full shadow-md">
+                    <QrCode className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>
-                  <h2 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent">
+                  <h2 className="text-sm sm:text-base font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent">
                     読み取り回数
                   </h2>
                 </div>
-                <p className="text-sm text-gray-600 ml-14">
+                <p className="text-xs text-gray-600 ml-10">
                   他の人のQRコードをスキャン
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent">
+                <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent">
                   <AnimatedNumber value={metrics.scanOut} delay={200} />
                 </div>
-                <div className="text-sm text-gray-500 font-medium">回</div>
+                <div className="text-xs text-gray-500 font-medium">回</div>
               </div>
             </div>
             {/* プログレスバー風の装飾 */}
@@ -145,27 +145,27 @@ export default function MetricsPage() {
           </div>
 
           {/* 読み取られ回数 */}
-          <div className="backdrop-blur-lg bg-white/90 rounded-2xl shadow-xl p-6
-                        transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl">
+          <div className="backdrop-blur-lg bg-white/90 rounded-xl shadow-xl p-4
+                        transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className="p-3 bg-gradient-to-r from-pink-500 to-yellow-400 rounded-full shadow-lg">
-                    <Users className="w-6 h-6 text-white" />
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className="p-2 bg-gradient-to-r from-pink-500 to-yellow-400 rounded-full shadow-md">
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>
-                  <h2 className="text-lg font-bold bg-gradient-to-r from-pink-500 to-yellow-400 bg-clip-text text-transparent">
+                  <h2 className="text-sm sm:text-base font-bold bg-gradient-to-r from-pink-500 to-yellow-400 bg-clip-text text-transparent">
                     読み取られ回数
                   </h2>
                 </div>
-                <p className="text-sm text-gray-600 ml-14">
+                <p className="text-xs text-gray-600 ml-10">
                   あなたのQRコードが読まれた数
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-4xl font-bold bg-gradient-to-r from-pink-500 to-yellow-400 bg-clip-text text-transparent">
+                <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-pink-500 to-yellow-400 bg-clip-text text-transparent">
                   <AnimatedNumber value={metrics.scanIn} delay={400} />
                 </div>
-                <div className="text-sm text-gray-500 font-medium">回</div>
+                <div className="text-xs text-gray-500 font-medium">回</div>
               </div>
             </div>
             {/* プログレスバー風の装飾 */}
@@ -179,36 +179,36 @@ export default function MetricsPage() {
 
           {/* 総合実績 */}
           <div className="relative backdrop-blur-lg bg-gradient-to-r from-purple-500/90 via-pink-500/90 to-yellow-400/90
-                        rounded-2xl shadow-2xl p-8 text-white overflow-hidden
-                        transform transition-all duration-300 hover:scale-[1.02]">
+                        rounded-xl shadow-2xl p-6 text-white overflow-hidden
+                        transform transition-all duration-300 hover:scale-[1.01]">
             {/* 背景の光エフェクト */}
             <div className="absolute inset-0 opacity-30">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full blur-3xl animate-pulse"></div>
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-yellow-300 rounded-full blur-3xl animate-pulse delay-1000"></div>
+              <div className="absolute top-0 right-0 w-24 h-24 bg-white rounded-full blur-3xl animate-pulse"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-yellow-300 rounded-full blur-3xl animate-pulse delay-1000"></div>
             </div>
 
             <div className="relative text-center">
-              <div className="inline-flex p-4 bg-white/20 rounded-full mb-4 backdrop-blur-md">
-                <Trophy className="w-10 h-10 text-yellow-300 animate-pulse" />
+              <div className="inline-flex p-3 bg-white/20 rounded-full mb-3 backdrop-blur-md">
+                <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-300 animate-pulse" />
               </div>
-              <h2 className="text-xl font-bold mb-3 drop-shadow-lg">総合実績</h2>
-              <div className="text-5xl font-bold mb-2 drop-shadow-lg">
+              <h2 className="text-base sm:text-lg font-bold mb-2 drop-shadow-lg">総合実績</h2>
+              <div className="text-3xl sm:text-4xl font-bold mb-2 drop-shadow-lg">
                 <AnimatedNumber value={metrics.scanOut + metrics.scanIn} delay={600} />
               </div>
-              <div className="text-sm font-medium mb-4 opacity-90">
+              <div className="text-xs sm:text-sm font-medium mb-3 opacity-90">
                 総交流回数
               </div>
 
               {/* スパークルエフェクト */}
-              <div className="flex justify-center gap-2 mb-4">
-                <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
-                <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse delay-100" />
-                <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse delay-200" />
+              <div className="flex justify-center gap-1 mb-2">
+                <Sparkles className="w-3 h-3 text-yellow-300 animate-pulse" />
+                <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse delay-100" />
+                <Sparkles className="w-3 h-3 text-yellow-300 animate-pulse delay-200" />
               </div>
 
-              <div className="text-xs font-medium opacity-80 leading-relaxed">
+              <div className="text-[10px] sm:text-xs font-medium opacity-80 leading-relaxed">
                 QRコードを通じて<br />
-                <span className="text-lg font-bold">{metrics.scanOut + metrics.scanIn}</span>回の素晴らしい出会いがありました！
+                <span className="text-sm font-bold">{metrics.scanOut + metrics.scanIn}</span>回の素晴らしい出会いがありました！
               </div>
             </div>
           </div>

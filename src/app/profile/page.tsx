@@ -155,10 +155,10 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
-      <div className="max-w-md mx-auto p-4 pb-32">
-        <div className="text-center mb-6 pt-4">
-          <h1 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">プロフィール設定</h1>
-          <p className="text-white/80 text-sm">興味のあることをタップしてね！</p>
+      <div className="max-w-md mx-auto p-4 pb-20">
+        <div className="text-center mb-4 pt-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-white mb-1 drop-shadow-lg">プロフィール設定</h1>
+          <p className="text-white/80 text-xs sm:text-sm">興味のあることをタップしてね！</p>
         </div>
 
       {/* ガイダンス */}
@@ -184,20 +184,20 @@ export default function ProfilePage() {
 
             return (
               <div key={topicId}
-                   className="backdrop-blur-lg bg-white/90 rounded-2xl shadow-xl overflow-hidden
-                            transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl">
+                   className="backdrop-blur-lg bg-white/90 rounded-xl shadow-xl overflow-hidden
+                            transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl">
                 {/* トピックヘッダー（クリック可能） */}
                 <button
                   onClick={() => toggleTopic(topicId)}
-                  className="w-full p-5 flex items-center justify-between
+                  className="w-full p-4 flex items-center justify-between
                            bg-gradient-to-r from-white/50 to-white/30
                            hover:from-white/60 hover:to-white/40 transition-all duration-300"
                 >
-                  <div className="flex items-center space-x-3">
-                    <div className={`text-3xl transform transition-transform duration-300 ${isExpanded ? 'rotate-12 scale-110' : ''}`}>
+                  <div className="flex items-center space-x-2">
+                    <div className={`text-2xl transform transition-transform duration-300 ${isExpanded ? 'rotate-12 scale-110' : ''}`}>
                       {topic.icon}
                     </div>
-                    <h2 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent">
+                    <h2 className="text-sm sm:text-base font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent">
                       {topic.label}
                     </h2>
                     {hasSelections && (
@@ -281,11 +281,11 @@ export default function ProfilePage() {
         </div>
 
         {/* 保存ボタン */}
-        <div className="mt-8 relative">
+        <div className="mt-6 relative">
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className={`w-full py-4 px-6 rounded-2xl font-bold text-white text-lg
+            className={`w-full py-3 px-4 rounded-xl font-bold text-white text-base sm:text-lg
                      transform transition-all duration-300
                      ${isSaving
                        ? 'bg-gray-400 cursor-wait scale-95'
