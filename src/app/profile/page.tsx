@@ -155,7 +155,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
-      <div className="max-w-md mx-auto p-4 pb-24">
+      <div className="max-w-md mx-auto p-4 pb-32">
         <div className="text-center mb-6 pt-4">
           <h1 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">プロフィール設定</h1>
           <p className="text-white/80 text-sm">興味のあることをタップしてね！</p>

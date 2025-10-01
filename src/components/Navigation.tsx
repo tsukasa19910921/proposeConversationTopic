@@ -16,9 +16,9 @@ export default function Navigation() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50">
       {/* ガラスモーフィズム背景 */}
-      <div className="backdrop-blur-xl bg-white/10 border-t border-white/20">
+      <div className="backdrop-blur-xl bg-white/20 border-t border-white/30 shadow-2xl shadow-black/20">
         <div className="max-w-md mx-auto">
-          <div className="flex justify-around py-2">
+          <div className="flex justify-around py-3">
             {navItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href

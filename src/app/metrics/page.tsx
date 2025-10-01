@@ -93,7 +93,7 @@ export default function MetricsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
-      <div className="max-w-md mx-auto p-4 pb-24">
+      <div className="max-w-md mx-auto p-4 pb-32">
         <div className="flex justify-between items-center mb-6 pt-4">
           <div>
             <h1 className="text-2xl font-bold text-white mb-1 drop-shadow-lg">実績</h1>

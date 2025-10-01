@@ -152,7 +152,7 @@ function HomeContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
       {/* メインコンテンツ */}
-      <div className="max-w-md mx-auto p-4 pb-24">
+      <div className="max-w-md mx-auto p-4 pb-32">
         {/* ヘッダー */}
         <div className="flex justify-between items-center mb-6 pt-4">
           <div>
@@ -170,7 +170,7 @@ function HomeContent() {
         </div>
 
         {/* QRカード */}
-        <div className="backdrop-blur-lg bg-white/90 rounded-2xl shadow-xl p-8 mb-6
+        <div className="backdrop-blur-lg bg-white/90 rounded-2xl shadow-xl p-4 sm:p-8 mb-6
                       transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl">
           <div className="text-center mb-4">
             <h2 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent mb-2">
@@ -180,15 +180,15 @@ function HomeContent() {
           </div>
 
           {qrData ? (
-            <div
-              className="bg-white rounded-xl p-4 shadow-inner"
-              dangerouslySetInnerHTML={{ __html: qrData.svg }}
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center'
-              }}
-            />
+            <div className="bg-white rounded-xl p-4 shadow-inner flex items-center justify-center">
+              <div
+                className="w-full max-w-[256px] aspect-square"
+                dangerouslySetInnerHTML={{ __html: qrData.svg }}
+                style={{
+                  display: 'block'
+                }}
+              />
+            </div>
           ) : (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-10 w-10 border-4 border-purple-500 border-t-transparent"></div>
