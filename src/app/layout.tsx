@@ -1,9 +1,19 @@
 import './globals.css'
-import { Inter } from 'next/font/google'
+import { Poppins, Noto_Sans_JP } from 'next/font/google'
 import GoogleAnalytics from '@/components/GoogleAnalytics'
 import ClientAnalytics from '@/components/ClientAnalytics'
 
-const inter = Inter({ subsets: ['latin'] })
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-poppins',
+})
+
+const notoSansJP = Noto_Sans_JP({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '700'],
+  variable: '--font-noto-sans-jp',
+})
 
 export const metadata = {
   title: 'QRプロフィール×話題提示',
@@ -16,11 +26,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ja">
-      <body className={inter.className}>
+    <html lang="ja" className={`${poppins.variable} ${notoSansJP.variable}`}>
+      <body className="font-sans">
         <GoogleAnalytics />
         <ClientAnalytics />
-        <main className="min-h-screen bg-gray-50">
+        <main className="min-h-screen">
           {children}
         </main>
       </body>

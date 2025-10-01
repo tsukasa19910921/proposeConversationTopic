@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navigation from '@/components/Navigation'
+import { LogOut, QrCode, Scan } from 'lucide-react'
 import TopicModal from '@/components/TopicModal'
 import Toast from '@/components/Toast'
 import CameraScanner from '@/components/CameraScanner'
@@ -139,58 +140,78 @@ function HomeContent() {
 
   if (isLoading) {
     return (
-      <div className="max-w-md mx-auto p-4 pb-20 min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p className="text-gray-600">読み込み中...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+          <p className="text-white font-medium">読み込み中...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-md mx-auto p-4 pb-20 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-bold text-gray-800">ホーム</h1>
-        <button
-          onClick={handleLogout}
-          className="text-sm text-gray-600 hover:text-gray-800"
-        >
-          ログアウト
-        </button>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
+      {/* メインコンテンツ */}
+      <div className="max-w-md mx-auto p-4 pb-24">
+        {/* ヘッダー */}
+        <div className="flex justify-between items-center mb-6 pt-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-1 drop-shadow-lg">ホーム</h1>
+            <p className="text-white/80 text-sm">QRコードで新しい出会いを</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="p-3 backdrop-blur-lg bg-white/20 rounded-full
+                     hover:bg-white/30 transition-all duration-300 transform hover:scale-110
+                     shadow-lg group"
+          >
+            <LogOut className="w-5 h-5 text-white" />
+          </button>
+        </div>
 
-      {/* QRコード表示 */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">
-          あなたのQRコード
-        </h2>
-        {qrData ? (
-          <div className="flex justify-center">
+        {/* QRカード */}
+        <div className="backdrop-blur-lg bg-white/90 rounded-2xl shadow-xl p-8 mb-6
+                      transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl">
+          <div className="text-center mb-4">
+            <h2 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent mb-2">
+              あなたのQRコード
+            </h2>
+            <p className="text-sm text-gray-600">友達に読み取ってもらおう</p>
+          </div>
+
+          {qrData ? (
             <div
-              className="w-48 h-48 border border-gray-200 rounded-lg p-2"
+              className="bg-white rounded-xl p-4 shadow-inner"
               dangerouslySetInnerHTML={{ __html: qrData.svg }}
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
             />
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <div className="w-48 h-48 border border-gray-200 rounded-lg flex items-center justify-center bg-gray-50">
-              <span className="text-gray-400">QRコード読み込み中...</span>
+          ) : (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-purple-500 border-t-transparent"></div>
             </div>
-          </div>
-        )}
-        <p className="text-xs text-gray-500 text-center mt-2">
-          このQRコードを相手に読み取ってもらいましょう
-        </p>
-      </div>
+          )}
+        </div>
 
-      {/* スキャンボタン */}
-      <div className="space-y-3">
+        {/* スキャンボタン */}
         <button
           onClick={() => setShowScanner(true)}
-          className="w-full py-3 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-lg font-medium"
+          className="w-full py-4 px-6 rounded-2xl font-bold text-white text-lg
+                   bg-gradient-to-r from-pink-500 via-purple-500 to-teal-500
+                   transform transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95
+                   shadow-xl backdrop-blur-md relative overflow-hidden group mb-8"
         >
-          📱 相手のQRを読み取る
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent
+                          -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+          </div>
+          <span className="relative flex items-center justify-center gap-3">
+            <Scan className="w-6 h-6" />
+            相手のQRコードを読み取る
+          </span>
         </button>
       </div>
 
@@ -231,10 +252,10 @@ function HomeContent() {
 export default function HomePage() {
   return (
     <Suspense fallback={
-      <div className="max-w-md mx-auto p-4 pb-20 min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p className="text-gray-600">読み込み中...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+          <p className="text-white font-medium">読み込み中...</p>
         </div>
       </div>
     }>

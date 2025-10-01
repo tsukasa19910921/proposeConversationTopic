@@ -2,6 +2,204 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== カラーパレット定義 ===== */
+:root {
+  /* メインカラー */
+  --color-teal: #28C7FA;
+  --color-violet: #9B5DE5;
+
+  /* アクセントカラー */
+  --color-neon-yellow: #FEE440;
+  --color-pink: #F15BB5;
+  --color-light-blue: #00BBF9;
+
+  /* グラデーション */
+  --gradient-main: linear-gradient(135deg, var(--color-teal) 0%, var(--color-violet) 100%);
+  --gradient-pop: linear-gradient(135deg, var(--color-pink) 0%, var(--color-neon-yellow) 100%);
+  --gradient-cool: linear-gradient(135deg, var(--color-light-blue) 0%, var(--color-teal) 100%);
+
+  /* ガラスモーフィズム用 */
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+
+  /* ネオン効果 */
+  --neon-glow-teal: 0 0 30px rgba(40, 199, 250, 0.8), 0 0 60px rgba(40, 199, 250, 0.4);
+  --neon-glow-violet: 0 0 30px rgba(155, 93, 229, 0.8), 0 0 60px rgba(155, 93, 229, 0.4);
+  --neon-glow-pink: 0 0 30px rgba(241, 91, 181, 0.8), 0 0 60px rgba(241, 91, 181, 0.4);
+}
+
+/* ===== グローバルスタイル ===== */
+body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  font-family: var(--font-noto-sans-jp), var(--font-poppins), system-ui, -apple-system, sans-serif;
+}
+
+/* ===== ユーティリティクラス ===== */
+/* ガラスモーフィズム */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px) saturate(200%);
+  -webkit-backdrop-filter: blur(10px) saturate(200%);
+  background-image: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 8px 32px 0 rgba(31, 38, 135, 0.37),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* ネオンカード専用 */
+.neon-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(40, 199, 250, 0.1) 0%, rgba(155, 93, 229, 0.1) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.neon-card::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(135deg, var(--color-teal), var(--color-violet));
+  border-radius: 24px;
+  z-index: -1;
+  opacity: 0.7;
+  filter: blur(10px);
+  animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.02); }
+}
+
+/* ネオンテキスト */
+.text-neon-teal {
+  color: var(--color-teal);
+  text-shadow: var(--neon-glow-teal);
+}
+
+.text-neon-violet {
+  color: var(--color-violet);
+  text-shadow: var(--neon-glow-violet);
+}
+
+.text-neon-pink {
+  color: var(--color-pink);
+  text-shadow: var(--neon-glow-pink);
+}
+
+/* グラデーションテキスト */
+.text-gradient-main {
+  background: var(--gradient-main);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-pop {
+  background: var(--gradient-pop);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ボタンベーススタイル */
+.btn-gradient {
+  background: var(--gradient-main);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-gradient:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(40, 199, 250, 0.3);
+}
+
+.btn-gradient::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-gradient:hover::before {
+  left: 100%;
+}
+
+/* ===== アニメーション ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out;
+}
+
+.animate-slideInUp {
+  animation: slideInUp 0.4s ease-out;
+}
+
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
 /* QR Scanner Animation */
 @keyframes scan {
   0% {
@@ -17,4 +215,14 @@
 
 .animate-scan {
   animation: scan 2s ease-in-out infinite;
+}
+
+/* Toast Progress Bar Animation */
+@keyframes shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }

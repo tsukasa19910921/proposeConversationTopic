@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { LogIn, User, Lock, ArrowLeft } from 'lucide-react'
 
 function LoginForm() {
   const [userId, setUserId] = useState('')
@@ -42,65 +43,138 @@ function LoginForm() {
   }
 
   return (
-    <div className="max-w-md mx-auto p-4">
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">ログイン</h1>
-        <p className="text-gray-600">アカウントにサインインしてください</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-1">
-            ユーザーID
-          </label>
-          <input
-            type="text"
-            id="userId"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
-            disabled={isLoading}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            パスワード
-          </label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
-            disabled={isLoading}
-          />
-        </div>
-
-        {error && (
-          <div className="text-red-600 text-sm text-center bg-red-50 p-2 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600 flex items-center justify-center">
+      <div className="max-w-md w-full mx-auto p-4">
+        {/* 戻るボタン */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-4 transition-colors"
         >
-          {isLoading ? 'ログイン中...' : 'ログイン'}
-        </button>
-      </form>
+          <ArrowLeft className="w-4 h-4" />
+          <span className="text-sm">戻る</span>
+        </Link>
 
-      <div className="mt-6 text-center">
-        <p className="text-gray-600">
-          アカウントをお持ちでない場合{' '}
-          <Link href="/auth/signup" className="text-blue-500 hover:text-blue-600 font-medium">
-            新規登録
-          </Link>
-        </p>
+        {/* メインカード */}
+        <div className="backdrop-blur-lg bg-white/90 rounded-3xl shadow-2xl p-8
+                      transform transition-all duration-300 hover:scale-[1.02]">
+
+          {/* ヘッダー */}
+          <div className="text-center mb-8">
+            <div className="inline-flex p-4 bg-gradient-to-br from-purple-500 to-teal-500 rounded-full mb-4 shadow-lg">
+              <LogIn className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent mb-2">
+              ログイン
+            </h1>
+            <p className="text-gray-600 text-sm">アカウントにサインインしてください</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* ユーザーID入力 */}
+            <div>
+              <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-2">
+                ユーザーID
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  id="userId"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  className="w-full pl-10 pr-3 py-3 backdrop-blur-lg bg-white/60 border border-white/50
+                           rounded-xl shadow-inner
+                           focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/80
+                           transition-all duration-300"
+                  placeholder="your_id"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* パスワード入力 */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                パスワード
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  type="password"
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-3 py-3 backdrop-blur-lg bg-white/60 border border-white/50
+                           rounded-xl shadow-inner
+                           focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/80
+                           transition-all duration-300"
+                  placeholder="••••••••"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* エラーメッセージ */}
+            {error && (
+              <div className="backdrop-blur-lg bg-red-500/10 border border-red-200 text-red-700 text-sm text-center p-3 rounded-xl">
+                {error}
+              </div>
+            )}
+
+            {/* ログインボタン */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`w-full py-4 px-6 rounded-2xl font-bold text-white text-lg
+                       transform transition-all duration-300
+                       ${isLoading
+                         ? 'bg-gray-400 cursor-wait scale-95'
+                         : 'bg-gradient-to-r from-purple-500 via-pink-500 to-teal-500 hover:scale-105 hover:shadow-2xl active:scale-95'
+                       }
+                       shadow-xl backdrop-blur-md relative overflow-hidden group`}
+            >
+              {!isLoading && (
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent
+                                -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                </div>
+              )}
+              <span className="relative flex items-center justify-center gap-3">
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                    ログイン中...
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-5 h-5" />
+                    ログイン
+                  </>
+                )}
+              </span>
+            </button>
+          </form>
+
+          {/* フッター */}
+          <div className="mt-6 text-center">
+            <p className="text-gray-600 text-sm">
+              アカウントをお持ちでない場合
+            </p>
+            <Link
+              href="/auth/signup"
+              className="inline-flex items-center gap-2 mt-2 text-purple-600 hover:text-purple-700 font-medium transition-colors"
+            >
+              新規登録はこちら
+              <ArrowLeft className="w-4 h-4 rotate-180" />
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -109,10 +183,10 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="max-w-md mx-auto p-4 min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p className="text-gray-600">読み込み中...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+          <p className="text-white font-medium">読み込み中...</p>
         </div>
       </div>
     }>
