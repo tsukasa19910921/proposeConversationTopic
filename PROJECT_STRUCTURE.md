@@ -72,9 +72,15 @@ proposeConversationTopic/
 │   │   ├── CameraScanner.tsx # QRカメラスキャナー
 │   │   ├── ClientAnalytics.tsx # クライアント側GA
 │   │   ├── GoogleAnalytics.tsx # サーバー側GA
+│   │   ├── LoadingScreen.tsx # ローディング画面
 │   │   ├── Navigation.tsx    # 3タブナビゲーション
-│   │   ├── Toast.tsx         # トースト通知
+│   │   ├── PageShell.tsx     # ページ共通レイアウト
+│   │   ├── Toast.tsx         # トースト通知（廃止予定）
 │   │   └── TopicModal.tsx    # 話題表示モーダル
+│   │
+│   ├── 📂 hooks/             # カスタムフック
+│   │   ├── useApi.ts         # API呼び出しフック
+│   │   └── useToast.tsx      # トースト管理フック
 │   │
 │   └── 📂 lib/               # ビジネスロジック・ユーティリティ
 │       ├── 📂 repos/         # データベース操作層
@@ -82,8 +88,11 @@ proposeConversationTopic/
 │       │   ├── profile.ts    # プロフィール管理
 │       │   └── users.ts      # ユーザー管理
 │       │
+│       ├── api-utils.ts      # API共通ユーティリティ
 │       ├── cooldown.ts       # クールダウン制御
 │       ├── db.ts             # Prismaクライアント
+│       ├── env.ts            # 環境変数管理
+│       ├── http.ts           # HTTPユーティリティ
 │       ├── llm.ts            # Gemini AI連携
 │       ├── profile-shape.ts  # プロフィール型定義
 │       ├── qr.ts             # QRコード生成
@@ -126,7 +135,7 @@ proposeConversationTopic/
 | `page.tsx` | トップページ（ホームへリダイレクト） | `/` |
 | `not-found.tsx` | 404エラーページ | 存在しないURL |
 | `layout.tsx` | 全ページ共通のレイアウト<br>- Google Analytics設定<br>- 基本的なスタイル適用 | - |
-| `globals.css` | グローバルCSS<br>- カラーパレット定義<br>- ガラスモーフィズム<br>- ネオン効果<br>- QRコードSVGスタイル | - |
+| `globals.css` | グローバルCSS<br>- カラーパレット定義<br>- ガラスモーフィズム<br>- ネオン効果<br>- QRコードSVGスタイル<br>- QRスキャン用ユーティリティ | - |
 
 #### **認証関連（`/auth/`）**
 
@@ -179,8 +188,10 @@ proposeConversationTopic/
 |--------------|------|----------|------------|
 | `Navigation.tsx` | 3タブナビゲーション<br>（ホーム/プロフィール/実績） | 各メイン画面 | - |
 | `TopicModal.tsx` | 話題表示モーダル<br>・ローディング表示<br>・話題テキスト表示 | ホーム画面 | ローディング状態追加 |
-| `Toast.tsx` | 通知トースト表示<br>（エラー・成功メッセージ） | 全画面 | - |
-| `CameraScanner.tsx` | QRカメラスキャナー<br>・カメラ起動<br>・QR検出 | スキャン画面 | モバイル対応改善 |
+| `Toast.tsx` | 通知トースト表示<br>（エラー・成功メッセージ） | 全画面（廃止予定） | useToastに移行中 |
+| `CameraScanner.tsx` | QRカメラスキャナー<br>・カメラ起動<br>・QR検出<br>・統一デザイン適用 | スキャン画面 | ガラスモーフィズム<br>ネオン効果追加<br>四角形マスク実装 |
+| `LoadingScreen.tsx` | 統一ローディング画面<br>・全画面版<br>・オーバーレイ版 | 全ページ | 新規作成 |
+| `PageShell.tsx` | ページ共通レイアウト<br>・グラデーション背景<br>・カードレイアウト | 認証ページ等 | 新規作成 |
 | `GoogleAnalytics.tsx` | Google Analytics設定<br>（サーバーコンポーネント） | layout.tsx | - |
 | `ClientAnalytics.tsx` | SPA遷移トラッキング<br>（クライアントコンポーネント） | layout.tsx | - |
 
@@ -344,6 +355,8 @@ NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 3. **クライアント側キャッシュ**: QRコードのSVGキャッシュ
 4. **サーバーコンポーネント活用**: 不要なクライアントJSを削減
 5. **QR表示最適化**: margin調整とSVG display:block化で美観改善
+6. **UIコンポーネント共通化**: 約300行以上のコード削減
+7. **API呼び出し統一化**: useApiフックによる401エラー自動処理
 
 ### **今後の改善ポイント**
 - Vercel KVでのクールダウン管理（現在はin-memory）
@@ -372,6 +385,9 @@ NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 - QRコード内側の均等な白縁（margin: 2）
 - 外側カードの正方形化（aspect-square）
 - SVGインライン表示の修正
+- CameraScannerのデザイン統一（ガラスモーフィズム/ネオン効果）
+- スキャン枠を四角形マスクに変更（w-80/sm:w-96）
+- Toast管理をContext APIベースに移行（useToast）
 
 ---
 
@@ -420,4 +436,4 @@ Next.js 14の最新機能を活用し、TypeScriptによる型安全性を保ち
 
 ---
 
-*最終更新: 2025年10月*
+*最終更新: 2025年1月*
