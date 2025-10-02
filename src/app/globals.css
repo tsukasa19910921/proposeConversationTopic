@@ -235,3 +235,49 @@ body {
   max-height: 100%;
   display: block; /* インライン表示による下端余白を解消 */
 }
+
+/* ===== QRスキャン用ユーティリティ ===== */
+@keyframes scanline {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(19rem); /* 80 (w-80) / 4 = 20rem に近い値 */
+  }
+}
+
+/* デスクトップサイズ用 */
+@media (min-width: 640px) {
+  @keyframes scanline {
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(23rem); /* 96 (w-96) / 4 = 24rem に近い値 */
+    }
+  }
+}
+
+.animate-scanline {
+  animation: scanline 2.2s linear infinite;
+}
+
+/* スキャンエリアのマスク（中央をくり抜く） */
+.mask-cutout {
+  --s: 18rem; /* スキャン枠サイズ */
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent var(--s),
+    rgba(0, 0, 0, 0.45) calc(var(--s) + 2px)
+  );
+  pointer-events: none;
+}
+
+/* モバイル向けサイズ調整 */
+@media (max-width: 640px) {
+  .mask-cutout {
+    --s: 15rem;
+  }
+}

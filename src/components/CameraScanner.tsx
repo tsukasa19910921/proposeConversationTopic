@@ -193,18 +193,86 @@ export default function CameraScanner({ isOpen, onClose, onScan }: CameraScanner
       ? { deviceId: { exact: deviceId } }
       : { facingMode: usingFront ? 'user' : 'environment' };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 flex flex-col z-50">
-      <div className="bg-white text-black p-4 flex justify-between items-center">
-        <h2 className="text-xl font-semibold">QRコードをスキャン</h2>
-        <button onClick={onClose} className="text-gray-600 hover:text-gray-800 text-2xl">✕</button>
+    <div className="fixed inset-0 z-50 bg-black">
+      {/* 常に表示される背景レイヤー（黒またはグラデーション） */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-teal-800 to-blue-900" />
+
+      {/* カメラ映像レイヤー（権限取得後のみ） */}
+      <div className="absolute inset-0">
+        {hasPermission === true && (
+          <Scanner
+            key={scannerKey}
+            onScan={(res) => { if (res && res.length > 0) handleDecode(res[0].rawValue); }}
+            onError={handleError}
+            constraints={constraints}
+            styles={{
+              container: { width: '100%', height: '100%' },
+              video: { width: '100%', height: '100%', objectFit: 'cover' as const }
+            }}
+          />
+        )}
       </div>
 
-      <div className="flex-1 relative">
-        {hasPermission === false ? (
-          <div className="flex flex-col items-center justify-center h-full text-white p-4">
+      {/* くり抜きマスク＋角マーカー＋スキャンライン */}
+      {hasPermission === true && (
+        <>
+          {/* くり抜きオーバーレイ（四角形） - サイズを拡大 */}
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+            <div className="w-80 h-80 sm:w-96 sm:h-96 rounded-2xl shadow-[0_0_0_200vmax_rgba(0,0,0,0.45)]"></div>
+          </div>
+
+          {/* 角マーカー＋スキャンライン - サイズを拡大 */}
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+            <div className="relative w-80 h-80 sm:w-96 sm:h-96">
+              {/* 角マーカー（ネオン風） */}
+              <div className="absolute -top-1 -left-1 w-16 h-16 border-t-4 border-l-4 border-teal-400 rounded-tl-2xl"
+                   style={{ boxShadow: 'var(--neon-glow-teal)' }} />
+              <div className="absolute -top-1 -right-1 w-16 h-16 border-t-4 border-r-4 border-violet-400 rounded-tr-2xl"
+                   style={{ boxShadow: 'var(--neon-glow-violet)' }} />
+              <div className="absolute -bottom-1 -left-1 w-16 h-16 border-b-4 border-l-4 border-teal-400 rounded-bl-2xl"
+                   style={{ boxShadow: 'var(--neon-glow-teal)' }} />
+              <div className="absolute -bottom-1 -right-1 w-16 h-16 border-b-4 border-r-4 border-violet-400 rounded-br-2xl"
+                   style={{ boxShadow: 'var(--neon-glow-violet)' }} />
+
+              {/* スキャンライン */}
+              <div className="absolute inset-x-4 top-4 h-1 rounded-full animate-scanline"
+                   style={{ background: 'var(--gradient-main)', boxShadow: 'var(--neon-glow-teal)' }} />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ヘッダー（閉じるボタン）- ガラスPill */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2">
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full glass"
+             style={{ borderColor: 'var(--glass-border)', boxShadow: 'var(--glass-shadow)' }}>
+          <button
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-300 text-white font-medium"
+          >
+            閉じる
+          </button>
+        </div>
+      </div>
+
+      {/* ガイダンス（グラデ文字） */}
+      {hasPermission === true && (
+        <div className="absolute bottom-20 w-full text-center">
+          <p className="text-white/90 text-sm sm:text-base">
+            <span className="text-gradient-main font-semibold text-lg">QRコード</span>を枠内に合わせてね！
+          </p>
+        </div>
+      )}
+
+      {/* 権限NG時のガラスカード */}
+      {hasPermission === false && (
+        <div className="absolute inset-0 flex items-center justify-center p-4">
+          <div className="neon-card rounded-3xl p-8 text-white/90 max-w-sm mx-auto text-center">
             <svg
-              className="w-24 h-24 mb-4"
+              className="w-20 h-20 mx-auto mb-4 text-pink-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -216,58 +284,31 @@ export default function CameraScanner({ isOpen, onClose, onScan }: CameraScanner
                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
               />
             </svg>
-            <p className="text-center mb-4">カメラへのアクセスが拒否されました</p>
-            <p className="text-sm text-gray-300 text-center">
-              ブラウザの設定からカメラへのアクセスを許可してください
-            </p>
+            <p className="text-xl font-bold mb-3 text-gradient-pop">カメラへのアクセスが必要です</p>
+            <p className="text-sm opacity-90">ブラウザ設定からカメラを許可して再読み込みしてください</p>
           </div>
-        ) : hasPermission === null ? (
-          <div className="flex flex-col items-center justify-center h-full text-white">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
-            <p>カメラの許可を確認中...</p>
+        </div>
+      )}
+
+      {/* 権限確認中のローディング */}
+      {hasPermission === null && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-teal-400 border-t-transparent mx-auto mb-4"
+                 style={{ boxShadow: 'var(--neon-glow-teal)' }}></div>
+            <p className="text-white font-medium">カメラを準備中...</p>
           </div>
-        ) : (
-          <>
-            <Scanner
-              key={scannerKey}
-              onScan={(res) => { if (res && res.length > 0) handleDecode(res[0].rawValue); }}
-              onError={handleError}
-              constraints={constraints}
-              styles={{
-                container: { width: '100%', height: '100%' },
-                video: { width: '100%', height: '100%', objectFit: 'cover' as const }
-              }}
-            />
+        </div>
+      )}
 
-            {/* Scanning overlay */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="relative w-64 h-64">
-                  {/* Corner markers */}
-                  <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-white rounded-tl-lg"></div>
-                  <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-white rounded-tr-lg"></div>
-                  <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-white rounded-bl-lg"></div>
-                  <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-white rounded-br-lg"></div>
-
-                  {/* Scanning line animation */}
-                  <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-scan"></div>
-                </div>
-              </div>
-
-              {/* Instructions */}
-              <div className="absolute bottom-20 left-0 right-0 text-center text-white">
-                <p className="text-lg">QRコードを枠内に合わせてください</p>
-              </div>
-            </div>
-          </>
-        )}
-
-        {error && (
-          <div className="absolute top-20 left-4 right-4 bg-red-500 text-white p-4 rounded-lg">
-            <p>{error}</p>
+      {/* エラー表示 */}
+      {error && (
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-8">
+          <div className="glass px-6 py-3 rounded-xl text-white/90 text-sm">
+            {error}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
