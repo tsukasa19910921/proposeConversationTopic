@@ -41,16 +41,20 @@ The content is organized as follows:
 
 <directory_structure>
 .claude/settings.local.json
+.env.local.example
 .gitignore
 CLAUDE.md
 DEPLOYMENT_FIX.md
+next-env.d.ts
 next.config.js
 package.json
 postcss.config.js
 prisma/schema.prisma
+PROJECT_STRUCTURE.md
 src/app/api/auth/login/route.ts
 src/app/api/auth/logout/route.ts
 src/app/api/auth/signup/route.ts
+src/app/api/me/route.ts
 src/app/api/metrics/me/route.ts
 src/app/api/profile/me/route.ts
 src/app/api/qr/me/route.ts
@@ -61,81 +65,59 @@ src/app/globals.css
 src/app/home/page.tsx
 src/app/layout.tsx
 src/app/metrics/page.tsx
+src/app/not-found.tsx
 src/app/page.tsx
 src/app/profile/page.tsx
+src/app/scan/page.tsx
 src/components/CameraScanner.tsx
+src/components/ClientAnalytics.tsx
+src/components/GoogleAnalytics.tsx
 src/components/Navigation.tsx
 src/components/Toast.tsx
 src/components/TopicModal.tsx
 src/lib/cooldown.ts
 src/lib/db.ts
 src/lib/llm.ts
+src/lib/profile-shape.ts
 src/lib/qr.ts
 src/lib/repos/counters.ts
 src/lib/repos/profile.ts
 src/lib/repos/users.ts
 src/lib/session.ts
+src/lib/topics.ts
 tailwind.config.js
 tsconfig.json
+UI_IMPROVEMENT_TODO.md
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
 
-<file path=".claude/settings.local.json">
-{
-  "permissions": {
-    "allow": [
-      "Bash(npm run dev:*)",
-      "Bash(curl:*)",
-      "Bash(npm install:*)",
-      "Bash(npx prisma generate:*)",
-      "Bash(npx prisma:*)",
-      "Bash(tasklist)",
-      "Bash(taskkill:*)",
-      "Bash(cp:*)"
-    ],
-    "deny": [],
-    "ask": []
-  }
-}
+<file path="next-env.d.ts">
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/building-your-application/configuring/typescript for more information.
 </file>
 
-<file path=".gitignore">
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+<file path=".env.local.example">
+# Database Configuration
+DATABASE_URL=postgresql://...
+DIRECT_URL=postgresql://...
 
-# testing
-/coverage
+# Session Configuration
+SESSION_SECRET=your-random-secret-string-here
+SESSION_MAX_AGE_SECONDS=86400
 
-# next.js
-/.next/
-/out/
+# Google Gemini API
+GOOGLE_GEMINI_API_KEY=your-gemini-api-key
 
-# production
-/build
+# App Configuration
+APP_BASE_URL=http://localhost:3000
 
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
-.env*.local
-.env
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Google Analytics (Optional)
+NEXT_PUBLIC_GA_ID=your-google-analytics-id
 </file>
 
 <file path="DEPLOYMENT_FIX.md">
@@ -238,1336 +220,455 @@ module.exports = {
 };
 </file>
 
-<file path="src/app/auth/login/page.tsx">
-'use client'
+<file path="PROJECT_STRUCTURE.md">
+# 📚 プロジェクト構成・機能配置 解説書
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+## 🎯 プロジェクト概要
 
-export default function LoginPage() {
-  const [userId, setUserId] = useState('')
-  const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-  const router = useRouter()
+本プロジェクトは「**高校生向けQRプロフィール×話題提示アプリ**」です。
+QRコードを通じて相手と繋がり、AI（Google Gemini）が共通点を見つけて会話のきっかけとなる話題を提案します。
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
+### 主要な技術スタック
+- **フレームワーク**: Next.js 14（App Router）
+- **言語**: TypeScript
+- **データベース**: PostgreSQL（Supabase）+ Prisma ORM
+- **AI**: Google Gemini 1.5 Flash
+- **認証**: 署名付きCookie（HMAC）
+- **デプロイ**: Vercel
+- **スタイリング**: Tailwind CSS
 
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, password }),
-      })
+---
 
-      const data = await response.json()
+## 📁 フォルダ構成の全体像
 
-      if (response.ok) {
-        router.push('/home')
-      } else {
-        setError(data.error === 'invalid_credentials' ? 'ユーザーIDまたはパスワードが正しくありません' : 'ログインに失敗しました')
+```
+proposeConversationTopic/
+├── 📂 src/                    # ソースコード本体
+│   ├── 📂 app/                # Next.js App Router（ページとAPI）
+│   │   ├── 📂 api/           # APIエンドポイント
+│   │   ├── 📂 auth/          # 認証関連ページ
+│   │   ├── 📂 home/          # ホーム画面
+│   │   ├── 📂 profile/       # プロフィール画面
+│   │   ├── 📂 metrics/       # 実績画面
+│   │   ├── 📂 scan/          # QRスキャン画面
+│   │   └── layout.tsx        # 共通レイアウト
+│   │
+│   ├── 📂 components/         # 再利用可能なUIコンポーネント
+│   │
+│   └── 📂 lib/               # ビジネスロジック・ユーティリティ
+│       └── 📂 repos/         # データベース操作層
+│
+├── 📂 prisma/                 # データベース定義
+├── 📂 public/                 # 静的ファイル
+├── 📄 .env                    # 環境変数
+└── 📄 各種設定ファイル        # package.json, tsconfig.json等
+```
+
+---
+
+## 🗂️ 詳細なフォルダ・ファイル解説
+
+### 1️⃣ `/src/app/` - アプリケーションの中核
+
+#### **ページファイル（画面）**
+
+| ファイル | 機能説明 | アクセスURL |
+|---------|---------|------------|
+| `page.tsx` | トップページ（ホームへリダイレクト） | `/` |
+| `not-found.tsx` | 404エラーページ | 存在しないURL |
+| `layout.tsx` | 全ページ共通のレイアウト<br>- Google Analytics設定<br>- 基本的なスタイル適用 | - |
+
+#### **認証関連（`/auth/`）**
+
+| ファイル | 機能説明 | 特徴 |
+|---------|---------|------|
+| `auth/signup/page.tsx` | 新規登録画面 | ・ユーザーID/パスワード入力<br>・登録後は自動ログイン→ホームへ |
+| `auth/login/page.tsx` | ログイン画面 | ・既存ユーザーの認証<br>・成功後ホームへリダイレクト |
+
+#### **メイン機能画面**
+
+| ファイル | 機能説明 | 主な要素 |
+|---------|---------|----------|
+| `home/page.tsx` | ホーム画面（メイン） | ・自分のQRコード大きく表示<br>・「相手のQRを読み取る」ボタン<br>・話題モーダル表示 |
+| `profile/page.tsx` | プロフィール編集 | ・趣味・興味をチェックボックスで選択<br>・詳細テキスト入力<br>・保存ボタン |
+| `metrics/page.tsx` | 実績表示 | ・読み取った回数（scanOut）<br>・読み取られた回数（scanIn） |
+| `scan/page.tsx` | QRスキャン画面 | ・カメラでQR読み取り<br>・URLパラメータ経由でも処理可能 |
+
+---
+
+### 2️⃣ `/src/app/api/` - バックエンドAPI
+
+#### **認証API（`/api/auth/`）**
+
+| エンドポイント | メソッド | 機能 | レスポンス例 |
+|--------------|---------|------|-------------|
+| `/api/auth/signup` | POST | 新規ユーザー登録 | `{ok: true}` + Cookie設定 |
+| `/api/auth/login` | POST | ログイン認証 | `{ok: true}` + Cookie設定 |
+| `/api/auth/logout` | POST | ログアウト | Cookie削除 |
+
+#### **ユーザーデータAPI**
+
+| エンドポイント | メソッド | 機能 | 認証 |
+|--------------|---------|------|------|
+| `/api/me` | GET | ユーザー情報取得 | 必須 |
+| `/api/profile/me` | GET/PUT | プロフィール取得・更新 | 必須 |
+| `/api/qr/me` | GET | QRコード生成（URL+SVG） | 必須 |
+| `/api/metrics/me` | GET | 実績数値取得 | 必須 |
+
+#### **コア機能API**
+
+| エンドポイント | メソッド | 機能 | 特殊処理 |
+|--------------|---------|------|----------|
+| `/api/scan` | POST | QRスキャン処理 | ・30秒クールダウン<br>・Gemini AI話題生成<br>・カウンター更新 |
+
+---
+
+### 3️⃣ `/src/components/` - UIコンポーネント
+
+| コンポーネント | 役割 | 使用場所 |
+|--------------|------|----------|
+| `Navigation.tsx` | 3タブナビゲーション<br>（ホーム/プロフィール/実績） | 各メイン画面 |
+| `TopicModal.tsx` | 話題表示モーダル<br>・ローディング表示<br>・話題テキスト表示 | ホーム画面 |
+| `Toast.tsx` | 通知トースト表示<br>（エラー・成功メッセージ） | 全画面 |
+| `CameraScanner.tsx` | QRカメラスキャナー<br>・カメラ起動<br>・QR検出 | スキャン画面 |
+| `GoogleAnalytics.tsx` | Google Analytics設定<br>（サーバーコンポーネント） | layout.tsx |
+| `ClientAnalytics.tsx` | SPA遷移トラッキング<br>（クライアントコンポーネント） | layout.tsx |
+
+---
+
+### 4️⃣ `/src/lib/` - ビジネスロジック層
+
+#### **コア機能**
+
+| ファイル | 機能 | 主要な関数/処理 |
+|---------|------|----------------|
+| `session.ts` | 認証セッション管理 | ・`issueTicket()`: Cookie発行<br>・`requireSession()`: 認証確認 |
+| `llm.ts` | AI話題生成 | ・Gemini API連携<br>・プロンプト生成<br>・フォールバック処理 |
+| `qr.ts` | QRコード生成 | SVG形式のQRコード作成 |
+| `cooldown.ts` | クールダウン制御 | 30秒間の重複スキャン防止 |
+| `db.ts` | データベース接続 | Prisma Client初期化 |
+
+#### **データ定義**
+
+| ファイル | 内容 |
+|---------|------|
+| `topics.ts` | プロフィール選択肢の定義<br>（音楽、スポーツ、趣味等） |
+| `profile-shape.ts` | プロフィールのデータ構造定義 |
+
+#### **データベース操作（`/lib/repos/`）**
+
+| ファイル | 対象テーブル | 主要メソッド |
+|---------|------------|-------------|
+| `users.ts` | User | ・`createUser()`: ユーザー作成<br>・`verifyPassword()`: パスワード確認 |
+| `profile.ts` | Profile | ・`getProfile()`: 取得<br>・`saveProfile()`: 保存 |
+| `counters.ts` | Counters | ・`incrScanOutIn()`: カウント増加<br>・`getCounters()`: 取得 |
+
+---
+
+### 5️⃣ `/prisma/` - データベース定義
+
+#### **スキーマ構造**
+
+```prisma
+📊 データベーステーブル構成
+
+User（ユーザー基本情報）
+├── id: UUID（主キー）
+├── userId: ユーザーID（一意）
+├── passwordHash: ハッシュ化パスワード
+└── timestamps
+
+Profile（プロフィール情報）
+├── userId: 外部キー → User.id
+├── profileJson: JSON形式のプロフィールデータ
+└── updatedAt
+
+Counters（実績カウンター）
+├── userId: 外部キー → User.id
+├── scanOutCount: 読み取った回数
+├── scanInCount: 読み取られた回数
+└── updatedAt
+```
+
+---
+
+## 🔄 データフローと処理の流れ
+
+### **1. 新規登録フロー**
+```
+ユーザー入力
+    ↓
+[signup/page.tsx]
+    ↓
+POST /api/auth/signup
+    ↓
+[users.ts] createUser()
+    ↓
+Cookie発行 → ホーム画面へ
+```
+
+### **2. QRスキャン・話題生成フロー**
+```
+QRコード読み取り
+    ↓
+[CameraScanner.tsx]
+    ↓
+POST /api/scan
+    ↓
+[cooldown.ts] 30秒チェック
+    ↓
+[profile.ts] 両者のプロフィール取得
+    ↓
+[llm.ts] Gemini AIで話題生成
+    ↓
+[counters.ts] カウンター更新
+    ↓
+[TopicModal.tsx] 話題表示
+```
+
+### **3. プロフィール編集フロー**
+```
+プロフィール画面表示
+    ↓
+GET /api/profile/me
+    ↓
+ユーザー編集
+    ↓
+PUT /api/profile/me
+    ↓
+[profile.ts] saveProfile()
+    ↓
+DB更新完了
+```
+
+---
+
+## 🔐 セキュリティ設計
+
+### **認証・セッション**
+- **HMAC署名付きCookie**: 改ざん防止
+- **有効期限管理**: デフォルト24時間
+- **HTTPOnly属性**: XSS対策
+- **Secure属性**: HTTPS通信時のみ（本番環境）
+
+### **API保護**
+- 全ての個人データAPIで`requireSession()`による認証チェック
+- 自己スキャン防止
+- クールダウンによるスパム防止
+
+---
+
+## 🚀 デプロイ・環境設定
+
+### **必要な環境変数**
+```env
+# データベース
+DATABASE_URL=postgresql://...
+
+# セッション
+SESSION_SECRET=ランダムな長い文字列
+SESSION_MAX_AGE_SECONDS=86400
+
+# AI
+GOOGLE_GEMINI_API_KEY=AIza...
+
+# アプリケーション
+APP_BASE_URL=https://your-app.vercel.app
+
+# アナリティクス
+NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
+```
+
+### **Vercel固有の設定**
+- 全APIルートに`export const dynamic = 'force-dynamic'`設定
+- Edge Runtimeではなく Node.js Runtimeを使用
+- Suspenseバウンダリで`useSearchParams()`をラップ
+
+---
+
+## 📈 パフォーマンス最適化
+
+### **実装済みの最適化**
+1. **プロフィールデータ軽量化**: 選択された項目のみLLMに送信
+2. **エラーハンドリング**: Gemini API失敗時のフォールバック
+3. **クライアント側キャッシュ**: QRコードのSVGキャッシュ
+4. **サーバーコンポーネント活用**: 不要なクライアントJSを削減
+
+### **今後の改善ポイント**
+- Vercel KVでのクールダウン管理（現在はin-memory）
+- プロフィールデータのさらなる圧縮
+- リトライロジックの実装
+
+---
+
+## 🎨 UI/UXの特徴
+
+### **デザインコンセプト**
+- **シンプル**: 高校生が直感的に使える
+- **モバイルファースト**: スマートフォン最適化
+- **レスポンシブ**: 各種画面サイズ対応
+
+### **ナビゲーション設計**
+- **3タブ構成**: ホーム・プロフィール・実績
+- **モーダル活用**: 話題表示は画面遷移なし
+- **トースト通知**: エラーを控えめに表示
+
+---
+
+## 📝 開発者向けメモ
+
+### **よく使うコマンド**
+```bash
+# 開発サーバー起動
+npm run dev
+
+# データベースマイグレーション
+npx prisma db push
+
+# Prismaクライアント生成
+npx prisma generate
+
+# 本番ビルドテスト
+npm run build
+```
+
+### **トラブルシューティング**
+- **Gemini API 503エラー**: フォールバック処理で対応中
+- **ビルドエラー**: `useSearchParams()`はSuspenseバウンダリ必須
+- **Cookie問題**: SameSite属性の確認
+
+---
+
+## 🏁 まとめ
+
+このアプリケーションは、**技術的にはシンプルながら実用的**な構成となっています。
+Next.js 14の最新機能を活用し、TypeScriptによる型安全性を保ちながら、
+高校生が気軽に使えるソーシャルツールとして設計されています。
+
+各フォルダ・ファイルが明確な役割を持ち、保守性の高い構造となっているため、
+今後の機能拡張も容易に行えるアーキテクチャとなっています。
+
+---
+
+*最終更新: 2024年12月*
+</file>
+
+<file path="src/app/api/me/route.ts">
+import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/session";
+import { prisma } from "@/lib/db";
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
+  try {
+    const session = requireSession();
+
+    // ユーザー情報とプロフィール情報を取得
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      include: {
+        profile: true
       }
-    } catch (error) {
-      setError('ネットワークエラーが発生しました')
-    } finally {
-      setIsLoading(false)
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "user_not_found" }, { status: 404 });
     }
+
+    // プロフィール完了状態を判定
+    // プロフィールが存在し、profileJsonに何らかのデータが入っていれば完了とみなす
+    const profileCompleted = user.profile &&
+      user.profile.profileJson &&
+      typeof user.profile.profileJson === 'string' &&
+      user.profile.profileJson.trim() !== '{}' &&
+      user.profile.profileJson.trim() !== '';
+
+    return NextResponse.json({
+      userId: user.id,
+      userIdName: user.userId,
+      profileCompleted: Boolean(profileCompleted),
+      hasProfile: Boolean(user.profile)
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "UNAUTH") {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    return NextResponse.json({ error: "internal" }, { status: 500 });
   }
-
-  return (
-    <div className="max-w-md mx-auto p-4">
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">ログイン</h1>
-        <p className="text-gray-600">アカウントにサインインしてください</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-1">
-            ユーザーID
-          </label>
-          <input
-            type="text"
-            id="userId"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
-            disabled={isLoading}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            パスワード
-          </label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
-            disabled={isLoading}
-          />
-        </div>
-
-        {error && (
-          <div className="text-red-600 text-sm text-center bg-red-50 p-2 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'ログイン中...' : 'ログイン'}
-        </button>
-      </form>
-
-      <div className="mt-6 text-center">
-        <p className="text-gray-600">
-          アカウントをお持ちでない場合{' '}
-          <Link href="/auth/signup" className="text-blue-500 hover:text-blue-600 font-medium">
-            新規登録
-          </Link>
-        </p>
-      </div>
-    </div>
-  )
 }
 </file>
 
-<file path="src/app/auth/signup/page.tsx">
-'use client'
-
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-
-export default function SignupPage() {
-  const [userId, setUserId] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-  const router = useRouter()
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-
-    if (password !== confirmPassword) {
-      setError('パスワードが一致しません')
-      return
-    }
-
-    if (password.length < 6) {
-      setError('パスワードは6文字以上で入力してください')
-      return
-    }
-
-    setIsLoading(true)
-
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, password }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        router.push('/home')
-      } else {
-        setError(data.error === 'user_exists' ? 'このユーザーIDは既に使用されています' : '新規登録に失敗しました')
-      }
-    } catch (error) {
-      setError('ネットワークエラーが発生しました')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
+<file path="src/app/not-found.tsx">
+export default function NotFound() {
   return (
-    <div className="max-w-md mx-auto p-4">
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">新規登録</h1>
-        <p className="text-gray-600">新しいアカウントを作成してください</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-1">
-            ユーザーID
-          </label>
-          <input
-            type="text"
-            id="userId"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            required
-            disabled={isLoading}
-            minLength={3}
-          />
-          <p className="text-xs text-gray-500 mt-1">3文字以上で入力してください</p>
-        </div>
-
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            パスワード
-          </label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            required
-            disabled={isLoading}
-            minLength={6}
-          />
-          <p className="text-xs text-gray-500 mt-1">6文字以上で入力してください</p>
-        </div>
-
-        <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-            パスワード確認
-          </label>
-          <input
-            type="password"
-            id="confirmPassword"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            required
-            disabled={isLoading}
-          />
-        </div>
-
-        {error && (
-          <div className="text-red-600 text-sm text-center bg-red-50 p-2 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full py-2 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? '登録中...' : '新規登録'}
-        </button>
-      </form>
-
-      <div className="mt-6 text-center">
-        <p className="text-gray-600">
-          既にアカウントをお持ちの場合{' '}
-          <Link href="/auth/login" className="text-blue-500 hover:text-blue-600 font-medium">
-            ログイン
-          </Link>
-        </p>
-      </div>
-    </div>
-  )
-}
-</file>
-
-<file path="src/app/globals.css">
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* QR Scanner Animation */
-@keyframes scan {
-  0% {
-    top: 0;
-  }
-  50% {
-    top: calc(100% - 4px);
-  }
-  100% {
-    top: 0;
-  }
-}
-
-.animate-scan {
-  animation: scan 2s ease-in-out infinite;
-}
-</file>
-
-<file path="src/app/home/page.tsx">
-'use client'
-
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Navigation from '@/components/Navigation'
-import TopicModal from '@/components/TopicModal'
-import Toast from '@/components/Toast'
-import CameraScanner from '@/components/CameraScanner'
-
-export default function HomePage() {
-  const [qrData, setQrData] = useState<{ url: string; svg: string } | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [topic, setTopic] = useState<string>('')
-  const [showTopicModal, setShowTopicModal] = useState(false)
-  const [showScanner, setShowScanner] = useState(false)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; isVisible: boolean }>({
-    message: '',
-    type: 'success',
-    isVisible: false
-  })
-  const router = useRouter()
-
-  useEffect(() => {
-    fetchQR()
-  }, [])
-
-  const fetchQR = async () => {
-    try {
-      const response = await fetch('/api/qr/me')
-
-      if (response.status === 401) {
-        router.push('/auth/login')
-        return
-      }
-
-      if (response.ok) {
-        const data = await response.json()
-        setQrData(data)
-      } else {
-        showToast('QRコードの取得に失敗しました', 'error')
-      }
-    } catch (error) {
-      showToast('ネットワークエラーが発生しました', 'error')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
-    setToast({ message, type, isVisible: true })
-  }
-
-  const hideToast = () => {
-    setToast(prev => ({ ...prev, isVisible: false }))
-  }
-
-  const handleScanResult = async (scannedSid: string) => {
-    try {
-      const response = await fetch('/api/scan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ scannedSid }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setTopic(data.message)
-        setShowTopicModal(true)
-        showToast('スキャン成功！', 'success')
-      } else if (response.status === 429) {
-        showToast(data.message || '時間をおいてトライしてください', 'warning')
-      } else if (response.status === 401) {
-        router.push('/auth/login')
-      } else if (response.status === 400 && data.error === 'self_scan') {
-        showToast('自分のQRコードはスキャンできません', 'warning')
-      } else if (response.status === 404) {
-        showToast('ユーザーが見つかりませんでした', 'error')
-      } else {
-        showToast('スキャンに失敗しました', 'error')
-      }
-    } catch (error) {
-      showToast('ネットワークエラーが発生しました', 'error')
-    }
-  }
-
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' })
-      router.push('/')
-    } catch (error) {
-      showToast('ログアウトに失敗しました', 'error')
-    }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="max-w-md mx-auto p-4 pb-20 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p className="text-gray-600">読み込み中...</p>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="max-w-md mx-auto p-4 pb-20 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-bold text-gray-800">ホーム</h1>
-        <button
-          onClick={handleLogout}
-          className="text-sm text-gray-600 hover:text-gray-800"
-        >
-          ログアウト
-        </button>
-      </div>
-
-      {/* QRコード表示 */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">
-          あなたのQRコード
-        </h2>
-        {qrData ? (
-          <div className="flex justify-center">
-            <div
-              className="w-48 h-48 border border-gray-200 rounded-lg p-2"
-              dangerouslySetInnerHTML={{ __html: qrData.svg }}
-            />
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <div className="w-48 h-48 border border-gray-200 rounded-lg flex items-center justify-center bg-gray-50">
-              <span className="text-gray-400">QRコード読み込み中...</span>
-            </div>
-          </div>
-        )}
-        <p className="text-xs text-gray-500 text-center mt-2">
-          このQRコードを相手に読み取ってもらいましょう
+    <div className="max-w-md mx-auto p-6 space-y-4">
+      <div className="text-center mb-6">
+        <div className="text-6xl mb-4">😵</div>
+        <h1 className="text-2xl font-bold text-gray-800">ページが見つかりません</h1>
+        <p className="text-gray-600 mt-2">
+          URLが間違っているか、ページが移動・削除された可能性があります。
         </p>
       </div>
 
-      {/* スキャンボタン */}
       <div className="space-y-3">
-        <button
-          onClick={() => setShowScanner(true)}
-          className="w-full py-3 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-lg font-medium"
+        <a
+          href="/auth/login"
+          className="block w-full text-center py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
         >
-          📱 相手のQRを読み取る
-        </button>
-      </div>
-
-      {/* ナビゲーション */}
-      <Navigation />
-
-      {/* カメラスキャナー */}
-      <CameraScanner
-        isOpen={showScanner}
-        onClose={() => setShowScanner(false)}
-        onScan={handleScanResult}
-      />
-
-      {/* モーダル */}
-      <TopicModal
-        isOpen={showTopicModal}
-        message={topic}
-        onClose={() => setShowTopicModal(false)}
-      />
-
-      {/* トースト */}
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isVisible={toast.isVisible}
-        onClose={hideToast}
-      />
-    </div>
-  )
-}
-</file>
-
-<file path="src/app/layout.tsx">
-import './globals.css'
-import { Inter } from 'next/font/google'
-
-const inter = Inter({ subsets: ['latin'] })
-
-export const metadata = {
-  title: 'QRプロフィール×話題提示',
-  description: '高校生向けQR交換アプリ',
-}
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <html lang="ja">
-      <body className={inter.className}>
-        <main className="min-h-screen bg-gray-50">
-          {children}
-        </main>
-      </body>
-    </html>
-  )
-}
-</file>
-
-<file path="src/app/metrics/page.tsx">
-'use client'
-
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Navigation from '@/components/Navigation'
-import Toast from '@/components/Toast'
-
-interface MetricsData {
-  scanOut: number
-  scanIn: number
-}
-
-export default function MetricsPage() {
-  const [metrics, setMetrics] = useState<MetricsData>({ scanOut: 0, scanIn: 0 })
-  const [isLoading, setIsLoading] = useState(true)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; isVisible: boolean }>({
-    message: '',
-    type: 'success',
-    isVisible: false
-  })
-  const router = useRouter()
-
-  useEffect(() => {
-    fetchMetrics()
-  }, [])
-
-  const fetchMetrics = async () => {
-    try {
-      const response = await fetch('/api/metrics/me')
-
-      if (response.status === 401) {
-        router.push('/auth/login')
-        return
-      }
-
-      if (response.ok) {
-        const data = await response.json()
-        setMetrics(data)
-      } else {
-        showToast('実績の取得に失敗しました', 'error')
-      }
-    } catch (error) {
-      showToast('ネットワークエラーが発生しました', 'error')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
-    setToast({ message, type, isVisible: true })
-  }
-
-  const hideToast = () => {
-    setToast(prev => ({ ...prev, isVisible: false }))
-  }
-
-  if (isLoading) {
-    return (
-      <div className="max-w-md mx-auto p-4 pb-20 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p className="text-gray-600">読み込み中...</p>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="max-w-md mx-auto p-4 pb-20 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-bold text-gray-800">実績</h1>
-        <button
-          onClick={fetchMetrics}
-          className="text-sm text-blue-500 hover:text-blue-600"
+          ログイン
+        </a>
+        <a
+          href="/auth/signup"
+          className="block w-full text-center py-3 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors"
         >
-          更新
-        </button>
+          新規登録
+        </a>
+        <a
+          href="/"
+          className="block w-full text-center py-3 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+        >
+          ホームへ
+        </a>
       </div>
 
-      {/* 実績カード */}
-      <div className="space-y-4">
-        {/* 読み取り回数 */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center space-x-2 mb-2">
-                <span className="text-2xl">📱</span>
-                <h2 className="text-lg font-semibold text-gray-800">読み取り回数</h2>
-              </div>
-              <p className="text-sm text-gray-600">
-                あなたが他の人のQRコードを読み取った回数
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-blue-500">{metrics.scanOut}</div>
-              <div className="text-sm text-gray-500">回</div>
-            </div>
-          </div>
-        </div>
-
-        {/* 読み取られ回数 */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center space-x-2 mb-2">
-                <span className="text-2xl">✨</span>
-                <h2 className="text-lg font-semibold text-gray-800">読み取られ回数</h2>
-              </div>
-              <p className="text-sm text-gray-600">
-                他の人があなたのQRコードを読み取った回数
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-green-500">{metrics.scanIn}</div>
-              <div className="text-sm text-gray-500">回</div>
-            </div>
-          </div>
-        </div>
-
-        {/* 総合実績 */}
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-md p-6 text-white">
-          <div className="text-center">
-            <div className="text-2xl mb-2">🏆</div>
-            <h2 className="text-lg font-semibold mb-2">総合実績</h2>
-            <div className="text-2xl font-bold mb-1">
-              {metrics.scanOut + metrics.scanIn}
-            </div>
-            <div className="text-sm opacity-90">
-              総交流回数
-            </div>
-            <div className="mt-4 text-xs opacity-75">
-              QRコードを通じて{metrics.scanOut + metrics.scanIn}回の出会いがありました！
-            </div>
-          </div>
-        </div>
-
-        {/* メッセージ */}
-        <div className="text-center">
-          {metrics.scanOut + metrics.scanIn === 0 ? (
-            <p className="text-gray-500 text-sm">
-              まだ交流がありません。<br />
-              ホーム画面からQRコードを読み取って、<br />
-              新しい出会いを始めましょう！
-            </p>
-          ) : (
-            <p className="text-gray-500 text-sm">
-              素晴らしい交流実績です！<br />
-              引き続き新しい出会いを楽しんでください。
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* ナビゲーション */}
-      <Navigation />
-
-      {/* トースト */}
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isVisible={toast.isVisible}
-        onClose={hideToast}
-      />
-    </div>
-  )
-}
-</file>
-
-<file path="src/app/page.tsx">
-'use client'
-
-import { useState } from 'react'
-import Link from 'next/link'
-
-export default function HomePage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-
-  return (
-    <div className="max-w-md mx-auto p-4">
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
-          QRプロフィール×話題提示
-        </h1>
-        <p className="text-gray-600">
-          QRコードを交換して、会話のきっかけを見つけよう！
+      <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+        <p className="text-sm text-blue-700 text-center">
+          💡 QRコードを読み取った場合は、ログイン後に再度お試しください
         </p>
       </div>
-
-      {!isLoggedIn ? (
-        <div className="space-y-4">
-          <Link
-            href="/auth/login"
-            className="block w-full py-3 px-4 bg-blue-500 text-white text-center rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            ログイン
-          </Link>
-          <Link
-            href="/auth/signup"
-            className="block w-full py-3 px-4 bg-green-500 text-white text-center rounded-lg hover:bg-green-600 transition-colors"
-          >
-            新規登録
-          </Link>
-        </div>
-      ) : (
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">ログイン済み</p>
-          <Link
-            href="/home"
-            className="inline-block py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            ホームに進む
-          </Link>
-        </div>
-      )}
     </div>
   )
 }
 </file>
 
-<file path="src/app/profile/page.tsx">
-'use client'
+<file path="src/components/GoogleAnalytics.tsx">
+import Script from "next/script";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Navigation from '@/components/Navigation'
-import Toast from '@/components/Toast'
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
-const TOPICS = {
-  sports: {
-    label: 'スポーツ',
-    icon: '⚽',
-    options: ['野球', 'サッカー', '卓球', 'テニス', 'バスケットボール', 'バレーボール', 'ゴルフ', 'その他']
-  },
-  music: {
-    label: '音楽',
-    icon: '🎵',
-    options: ['J-POP', 'K-POP', 'ロック', 'ジャズ', 'クラシック', 'アニソン', 'ボカロ', 'その他']
-  },
-  food: {
-    label: '食事',
-    icon: '🍕',
-    options: ['和食', '洋食', '中華', 'イタリアン', 'ファストフード', 'お菓子作り', 'カフェ', 'その他']
-  },
-  movies: {
-    label: '映画・ドラマ',
-    icon: '🎬',
-    options: ['邦画', '洋画', '韓国ドラマ', 'アニメ', 'ドキュメンタリー', 'コメディ', 'ホラー', 'その他']
-  },
-  games: {
-    label: 'ゲーム',
-    icon: '🎮',
-    options: ['RPG', 'アクション', 'パズル', 'シミュレーション', 'FPS', 'モバイルゲーム', 'ボードゲーム', 'その他']
-  },
-  books: {
-    label: '読書',
-    icon: '📚',
-    options: ['小説', '漫画', 'ライトノベル', 'ビジネス書', '自己啓発', '歴史', '科学', 'その他']
-  }
-}
-
-interface ProfileData {
-  [topicId: string]: {
-    [option: string]: {
-      selected: boolean
-      freeText: string
-    }
-  }
-}
-
-export default function ProfilePage() {
-  const [profile, setProfile] = useState<ProfileData>({})
-  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set())
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; isVisible: boolean }>({
-    message: '',
-    type: 'success',
-    isVisible: false
-  })
-  const router = useRouter()
-
-  useEffect(() => {
-    fetchProfile()
-  }, [])
-
-  const initializeProfileStructure = () => {
-    const initialProfile: ProfileData = {}
-    Object.keys(TOPICS).forEach(topicId => {
-      initialProfile[topicId] = {}
-      TOPICS[topicId as keyof typeof TOPICS].options.forEach(option => {
-        initialProfile[topicId][option] = {
-          selected: false,
-          freeText: ''
-        }
-      })
-    })
-    return initialProfile
-  }
-
-  const fetchProfile = async () => {
-    try {
-      const response = await fetch('/api/profile/me')
-
-      if (response.status === 401) {
-        router.push('/auth/login')
-        return
-      }
-
-      if (response.ok) {
-        const data = await response.json()
-        const initialProfile = initializeProfileStructure()
-
-        if (data && Object.keys(data).length > 0) {
-          Object.keys(data).forEach(topicId => {
-            if (initialProfile[topicId] && data[topicId]) {
-              Object.keys(data[topicId]).forEach(option => {
-                if (initialProfile[topicId][option]) {
-                  initialProfile[topicId][option] = {
-                    selected: data[topicId][option]?.selected || false,
-                    freeText: data[topicId][option]?.freeText || ''
-                  }
-                }
-              })
-            }
-          })
-        }
-
-        setProfile(initialProfile)
-      } else {
-        setProfile(initializeProfileStructure())
-      }
-    } catch (error) {
-      showToast('プロフィールの取得に失敗しました', 'error')
-      setProfile(initializeProfileStructure())
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
-    setToast({ message, type, isVisible: true })
-  }
-
-  const hideToast = () => {
-    setToast(prev => ({ ...prev, isVisible: false }))
-  }
-
-  const handleOptionToggle = (topicId: string, option: string) => {
-    setProfile(prev => ({
-      ...prev,
-      [topicId]: {
-        ...prev[topicId],
-        [option]: {
-          ...prev[topicId][option],
-          selected: !prev[topicId][option].selected
-        }
-      }
-    }))
-  }
-
-  const handleFreeTextChange = (topicId: string, option: string, value: string) => {
-    setProfile(prev => ({
-      ...prev,
-      [topicId]: {
-        ...prev[topicId],
-        [option]: {
-          ...prev[topicId][option],
-          freeText: value
-        }
-      }
-    }))
-  }
-
-  const toggleTopic = (topicId: string) => {
-    setExpandedTopics(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(topicId)) {
-        newSet.delete(topicId)
-      } else {
-        newSet.add(topicId)
-      }
-      return newSet
-    })
-  }
-
-  const hasSelectedOptions = (topicId: string) => {
-    return Object.values(profile[topicId] || {}).some(option => option.selected)
-  }
-
-  const handleSave = async () => {
-    setIsSaving(true)
-
-    try {
-      const response = await fetch('/api/profile/me', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(profile),
-      })
-
-      if (response.status === 401) {
-        router.push('/auth/login')
-        return
-      }
-
-      if (response.ok) {
-        showToast('プロフィールを保存しました', 'success')
-      } else {
-        showToast('保存に失敗しました', 'error')
-      }
-    } catch (error) {
-      showToast('ネットワークエラーが発生しました', 'error')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  if (isLoading) {
-    return (
-      <div className="max-w-md mx-auto p-4 pb-20 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p className="text-gray-600">読み込み中...</p>
-        </div>
-      </div>
-    )
-  }
+export default function GoogleAnalytics() {
+  if (!GA_ID) return null;
 
   return (
-    <div className="max-w-md mx-auto p-4 pb-20 min-h-screen">
-      <h1 className="text-xl font-bold text-gray-800 mb-6">プロフィール設定</h1>
-
-      <div className="space-y-4">
-        {Object.entries(TOPICS).map(([topicId, topic]) => {
-          const isExpanded = expandedTopics.has(topicId)
-          const hasSelections = hasSelectedOptions(topicId)
-
-          return (
-            <div key={topicId} className="bg-white rounded-lg shadow-md overflow-hidden">
-              {/* トピックヘッダー（クリック可能） */}
-              <button
-                onClick={() => toggleTopic(topicId)}
-                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center space-x-3">
-                  <span className="text-2xl">{topic.icon}</span>
-                  <h2 className="text-lg font-semibold text-gray-800">{topic.label}</h2>
-                  {hasSelections && (
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  )}
-                </div>
-                <div className="flex items-center space-x-2">
-                  {hasSelections && (
-                    <span className="text-xs text-blue-600 font-medium">
-                      {Object.values(profile[topicId] || {}).filter(option => option.selected).length}件選択中
-                    </span>
-                  )}
-                  <svg
-                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                      isExpanded ? 'rotate-180' : ''
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </button>
-
-              {/* 選択肢（展開時のみ表示） */}
-              {isExpanded && (
-                <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-4">
-                  {topic.options.map((option) => (
-                    <div key={option} className="space-y-2">
-                      {/* チェックボックス */}
-                      <label className="flex items-center space-x-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={profile[topicId]?.[option]?.selected || false}
-                          onChange={() => handleOptionToggle(topicId, option)}
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                        />
-                        <span className="text-gray-700">{option}</span>
-                      </label>
-
-                      {/* 自由入力欄（選択時のみ表示） */}
-                      {profile[topicId]?.[option]?.selected && (
-                        <div className="ml-7">
-                          <textarea
-                            value={profile[topicId][option].freeText}
-                            onChange={(e) => handleFreeTextChange(topicId, option, e.target.value)}
-                            placeholder={`${option}について詳しく教えてください...`}
-                            className="w-full h-20 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-blue-50"
-                            maxLength={100}
-                          />
-                          <p className="text-xs text-gray-500 mt-1 text-right">
-                            {profile[topicId][option].freeText.length}/100文字
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* 保存ボタン */}
-      <div className="mt-6">
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="w-full py-3 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSaving ? '保存中...' : '保存する'}
-        </button>
-      </div>
-
-      {/* ナビゲーション */}
-      <Navigation />
-
-      {/* トースト */}
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isVisible={toast.isVisible}
-        onClose={hideToast}
+    <>
+      <Script
+        src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+        strategy="afterInteractive"
       />
-    </div>
-  )
-}
-</file>
-
-<file path="src/components/CameraScanner.tsx">
-'use client';
-
-import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
-
-// Dynamic import to avoid SSR issues - using Scanner instead of QrScanner
-const Scanner = dynamic(
-  () => import('@yudiel/react-qr-scanner').then((mod) => mod.Scanner),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
-);
-
-interface CameraScannerProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onScan: (data: string) => void;
-}
-
-export default function CameraScanner({ isOpen, onClose, onScan }: CameraScannerProps) {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      // Reset states when scanner opens
-      setError(null);
-      setHasPermission(null);
-
-      // Request camera permission
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(() => setHasPermission(true))
-        .catch(() => {
-          setHasPermission(false);
-          setError('カメラへのアクセスが許可されていません');
-        });
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const handleDecode = (result: string) => {
-    // Parse the QR code URL to extract sid
-    try {
-      const url = new URL(result);
-      const sid = url.searchParams.get('sid');
-      if (sid) {
-        onScan(sid);
-        onClose();
-      } else {
-        setError('無効なQRコードです');
-      }
-    } catch {
-      // Handle non-URL QR codes
-      setError('無効なQRコードです');
-    }
-  };
-
-  const handleError = (error: any) => {
-    console.error('QR Scanner Error:', error);
-    setError('スキャン中にエラーが発生しました');
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 flex flex-col z-50">
-      <div className="bg-white text-black p-4 flex justify-between items-center">
-        <h2 className="text-xl font-semibold">QRコードをスキャン</h2>
-        <button
-          onClick={onClose}
-          className="text-gray-600 hover:text-gray-800 text-2xl"
-        >
-          ✕
-        </button>
-      </div>
-
-      <div className="flex-1 relative">
-        {hasPermission === false ? (
-          <div className="flex flex-col items-center justify-center h-full text-white p-4">
-            <svg
-              className="w-24 h-24 mb-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
-            <p className="text-center mb-4">カメラへのアクセスが拒否されました</p>
-            <p className="text-sm text-gray-300 text-center">
-              ブラウザの設定からカメラへのアクセスを許可してください
-            </p>
-          </div>
-        ) : hasPermission === null ? (
-          <div className="flex flex-col items-center justify-center h-full text-white">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
-            <p>カメラの許可を確認中...</p>
-          </div>
-        ) : (
-          <>
-            <Scanner
-              onScan={(result) => {
-                if (result && result.length > 0) {
-                  handleDecode(result[0].rawValue);
-                }
-              }}
-              onError={handleError}
-              constraints={{
-                facingMode: { ideal: 'environment' }
-              }}
-              styles={{
-                container: {
-                  width: '100%',
-                  height: '100%'
-                },
-                video: {
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover' as const
-                }
-              }}
-            />
-
-            {/* Scanning overlay */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="relative w-64 h-64">
-                  {/* Corner markers */}
-                  <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-white rounded-tl-lg"></div>
-                  <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-white rounded-tr-lg"></div>
-                  <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-white rounded-bl-lg"></div>
-                  <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-white rounded-br-lg"></div>
-
-                  {/* Scanning line animation */}
-                  <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-scan"></div>
-                </div>
-              </div>
-
-              {/* Instructions */}
-              <div className="absolute bottom-20 left-0 right-0 text-center text-white">
-                <p className="text-lg">QRコードを枠内に合わせてください</p>
-              </div>
-            </div>
-          </>
-        )}
-
-        {error && (
-          <div className="absolute top-20 left-4 right-4 bg-red-500 text-white p-4 rounded-lg">
-            <p>{error}</p>
-          </div>
-        )}
-      </div>
-    </div>
+      <Script id="gtag-init" strategy="afterInteractive">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          // SPA二重計測を防ぐため初期自動送信をOFF
+          gtag('config', '${GA_ID}', { send_page_view: false });
+        `}
+      </Script>
+    </>
   );
 }
-</file>
-
-<file path="src/components/Navigation.tsx">
-'use client'
-
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-
-export default function Navigation() {
-  const pathname = usePathname()
-
-  const navItems = [
-    { href: '/home', label: 'ホーム', icon: '🏠' },
-    { href: '/profile', label: 'プロフィール', icon: '👤' },
-    { href: '/metrics', label: '実績', icon: '📊' },
-  ]
-
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-      <div className="max-w-md mx-auto">
-        <div className="flex justify-around">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center py-2 px-4 text-xs ${
-                pathname === item.href
-                  ? 'text-blue-500'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <span className="text-xl mb-1">{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </nav>
-  )
-}
-</file>
-
-<file path="src/components/Toast.tsx">
-'use client'
-
-import { useEffect } from 'react'
-
-interface ToastProps {
-  message: string
-  type: 'success' | 'error' | 'warning'
-  isVisible: boolean
-  onClose: () => void
-}
-
-export default function Toast({ message, type, isVisible, onClose }: ToastProps) {
-  useEffect(() => {
-    if (isVisible) {
-      const timer = setTimeout(() => {
-        onClose()
-      }, 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [isVisible, onClose])
-
-  if (!isVisible) return null
-
-  const bgColor = {
-    success: 'bg-green-500',
-    error: 'bg-red-500',
-    warning: 'bg-yellow-500',
-  }[type]
-
-  const icon = {
-    success: '✅',
-    error: '❌',
-    warning: '⏳',
-  }[type]
-
-  return (
-    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
-      <div className={`${bgColor} text-white px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2`}>
-        <span>{icon}</span>
-        <span>{message}</span>
-      </div>
-    </div>
-  )
-}
-</file>
-
-<file path="src/components/TopicModal.tsx">
-'use client'
-
-interface TopicModalProps {
-  isOpen: boolean
-  message: string
-  onClose: () => void
-}
-
-export default function TopicModal({ isOpen, message, onClose }: TopicModalProps) {
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
-        <div className="text-center">
-          <div className="text-4xl mb-4">💬</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-4">会話の話題</h2>
-          <p className="text-gray-700 mb-6 leading-relaxed">{message}</p>
-          <button
-            onClick={onClose}
-            className="w-full py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            閉じる
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-</file>
-
-<file path="src/lib/cooldown.ts">
-const mem = new Map<string, number>();
-const WINDOW = 30_000; // 30 seconds
-
-export async function canScan(scannerId: string, scannedId: string) {
-  const key = `${scannerId}:${scannedId}`;
-  const now = Date.now();
-  const last = mem.get(key) ?? 0;
-
-  if (now - last < WINDOW) {
-    return { ok: false, waitMs: WINDOW - (now - last) };
-  }
-
-  mem.set(key, now);
-  return { ok: true };
-}
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, time] of mem.entries()) {
-    if (now - time > WINDOW) {
-      mem.delete(key);
-    }
-  }
-}, WINDOW);
 </file>
 
 <file path="src/lib/db.ts">
@@ -1582,42 +683,76 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 </file>
 
-<file path="src/lib/llm.ts">
-import { GoogleGenerativeAI } from "@google/generative-ai";
+<file path="src/lib/profile-shape.ts">
+import { TOPICS } from "./topics";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// Packed形式（最小構造） - DB保存・LLM入力用
+export type PackedProfile = {
+  [topicId: string]: Array<{ name: string; text: string }>
+};
 
-const SYSTEM = `あなたは高校生の初対面の会話を助けるアシスタントです。
-安全第一（政治/宗教/性/病気/金銭/個人特定は扱わない）。
-出力は敬体で1〜2文、最後は質問で終える。出力は1件のみ。`;
-
-export async function generateTopic(profileA: any, profileB: any): Promise<string> {
-  try {
-    const prompt = [
-      { role: "user", parts: [{ text: SYSTEM }] },
-      {
-        role: "user",
-        parts: [{
-          text: `A=${JSON.stringify(profileA)}\nB=${JSON.stringify(profileB)}\n出力は {"message":"..."} 形式で。`
-        }]
-      },
-    ];
-
-    const result = await model.generateContent({ contents: prompt });
-    const response = result.response;
-    const text = response.text().trim();
-
-    try {
-      const parsed = JSON.parse(text);
-      return parsed.message || "音楽はよく聴きますか？最近のお気に入りがあれば教えてください。";
-    } catch {
-      return "音楽はよく聴きますか？最近のお気に入りがあれば教えてください。";
-    }
-  } catch (error) {
-    console.error("LLM generation error:", error);
-    return "音楽はよく聴きますか？最近のお気に入りがあれば教えてください。";
+// UI形式（フル構造） - UI表示用
+export type UIProfile = {
+  [topicId: string]: {
+    [option: string]: { selected: boolean; freeText: string }
   }
+};
+
+// UI → Packed（選択済み＋freeTextのみを抽出）
+export function packProfileFromUI(ui: UIProfile): PackedProfile {
+  const out: PackedProfile = {};
+
+  for (const [topicId, options] of Object.entries(ui || {})) {
+    // 現行UIに存在するオプションのみを対象にする
+    const topicDef = TOPICS[topicId as keyof typeof TOPICS];
+    if (!topicDef) continue;
+
+    const allowed = topicDef.options;
+    const picked = Object.entries(options)
+      .filter(([name, v]) => v?.selected && allowed.includes(name as any))
+      .map(([name, v]) => ({ name, text: v.freeText || '' }));
+
+    if (picked.length > 0) {
+      out[topicId] = picked;
+    }
+  }
+
+  return out;
+}
+
+// DB/LLM（Packed形式）→ UI（現行UIにある項目のみ反映）
+export function expandProfileForUI(input: any): UIProfile {
+  // まず、UI初期形状を作成
+  const ui: UIProfile = {};
+
+  for (const [topicId, def] of Object.entries(TOPICS)) {
+    ui[topicId] = {};
+    def.options.forEach(opt => {
+      ui[topicId][opt] = { selected: false, freeText: '' };
+    });
+  }
+
+  if (!input || typeof input !== 'object') {
+    return ui;
+  }
+
+  // Packed形式（配列）の処理のみ
+  for (const [topicId, val] of Object.entries(input)) {
+    if (Array.isArray(val)) {
+      for (const item of val) {
+        const name = item?.name;
+        // 現行UIに存在する項目のみ反映
+        if (ui[topicId]?.[name]) {
+          ui[topicId][name] = {
+            selected: true,
+            freeText: String(item?.text || '')
+          };
+        }
+      }
+    }
+  }
+
+  return ui;
 }
 </file>
 
@@ -1744,6 +879,643 @@ export async function verifyPassword(userId: string, password: string) {
 }
 </file>
 
+<file path="src/lib/topics.ts">
+export const TOPICS = {
+  sports: {
+    label: 'スポーツ',
+    icon: '⚽',
+    options: ['野球', 'サッカー', '卓球', 'テニス', 'バスケットボール', 'バレーボール', 'ゴルフ', 'その他']
+  },
+  music: {
+    label: '音楽',
+    icon: '🎵',
+    options: ['J-POP', 'K-POP', 'ロック', 'ジャズ', 'クラシック', 'アニソン', 'ボカロ', 'その他']
+  },
+  food: {
+    label: '食事',
+    icon: '🍕',
+    options: ['和食', '洋食', '中華', 'イタリアン', 'ファストフード', 'お菓子作り', 'カフェ', 'その他']
+  },
+  movies: {
+    label: '映画・ドラマ',
+    icon: '🎬',
+    options: ['邦画', '洋画', '韓国ドラマ', 'アニメ', 'ドキュメンタリー', 'コメディ', 'ホラー', 'その他']
+  },
+  games: {
+    label: 'ゲーム',
+    icon: '🎮',
+    options: ['RPG', 'アクション', 'パズル', 'シミュレーション', 'FPS', 'モバイルゲーム', 'ボードゲーム', 'その他']
+  },
+  books: {
+    label: '読書',
+    icon: '📚',
+    options: ['小説', '漫画', 'ライトノベル', 'ビジネス書', '自己啓発', '歴史', '科学', 'その他']
+  }
+} as const;
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "lib": ["dom", "dom.iterable", "es2020"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path="UI_IMPROVEMENT_TODO.md">
+# 🎨 UI改善TODOリスト - 高校生向けポップ×未来感デザイン
+
+## 📋 実装フェーズ分割
+
+### 🎯 フェーズ1: 基盤整備（ベースカラー・フォント・グローバルスタイル）
+**目標**: アプリ全体のトーン＆マナーを統一
+
+- [x] 1-1. カラーパレット定義（CSS変数化）
+  - メインカラー: ティールブルー (#28C7FA) + バイオレット (#9B5DE5)
+  - アクセントカラー: ネオンイエロー (#FEE440)、ピンク (#F15BB5)、ライトブルー (#00BBF9)
+  - グラデーション定義
+
+- [x] 1-2. フォント導入
+  - Google Fonts から Poppins を導入
+  - 日本語フォント: Noto Sans JP（丸みのある書体）
+
+- [x] 1-3. Tailwind CSS カスタマイズ
+  - カラーパレット追加
+  - カスタムユーティリティクラス作成（グラデーション、グラスモーフィズム）
+
+- [x] 1-4. グローバルスタイル更新（globals.css）
+  - 背景グラデーション
+  - 基本的なアニメーション定義
+
+**✅ チェックポイント1**: 完了
+
+---
+
+### 🎯 フェーズ2: コンポーネントスタイル改善（ボタン・カード・モーダル基礎）
+**目標**: 再利用コンポーネントのビジュアル向上
+
+- [x] 2-1. ボタンコンポーネント作成
+  - グラデーションボタン
+  - ホバーエフェクト（光沢感）
+  - クリックアニメーション
+
+- [x] 2-2. カードコンポーネント作成
+  - ガラスモーフィズム効果（改善済み）
+  - ネオン風ボーダー（改善済み）
+  - 浮遊感のある影
+
+- [x] 2-3. モーダル基礎スタイル
+  - 背景ブラー効果
+  - スライドイン/フェードインアニメーション
+
+- [x] 2-4. アイコンライブラリ導入
+  - Lucide React 導入済み
+  - 必要なアイコンセットの選定
+
+**✅ チェックポイント2**: 完了
+
+---
+
+### 🎯 フェーズ3: ホーム画面の改善
+**目標**: メイン画面をポップで未来的に
+
+- [x] 3-1. QRコードカード型UI
+  - ガラスモーフィズムカード（完了）
+  - 周囲の光エフェクト（CSS アニメーション）（完了）
+  - QRコードのスタイリング（完了）
+
+- [x] 3-2. FABスキャンボタン
+  - 浮遊感のある円形ボタン（完了）
+  - パルスアニメーション（完了）
+  - アイコン＋テキスト（完了）
+  - 配置調整機能追加（placement prop）
+
+- [x] 3-3. 背景演出
+  - グラデーション背景（完了）
+  - パーティクルアニメーション（Canvas実装）（完了）
+  - オーブエフェクト（完了）
+
+- [x] 3-4. ナビゲーション改善
+  - アイコン付きタブバー（Lucide React使用）（完了）
+  - アクティブ状態のハイライト（完了）
+  - 遷移アニメーション（完了）
+  - ガラスモーフィズム背景（完了）
+
+**✅ チェックポイント3**: 完了（配置修正済み）
+
+---
+
+### 🎯 フェーズ4: プロフィール画面の改善
+**目標**: 楽しく入力できるインタラクティブUI
+
+- [x] 4-1. タグ式興味選択UI
+  - アイコン付きカラフルタグ（完了）
+  - タップ時の色変化アニメーション（完了）
+  - 選択数のカウンター表示（完了）
+
+- [x] 4-2. 入力フィールドのガラスモーフィズム
+  - 透明感のある入力欄（完了）
+  - フォーカス時の光エフェクト（完了）
+
+- [x] 4-3. 保存ボタンのアニメーション
+  - 成功時の「キラッ」エフェクト（完了）
+  - ローディング状態の表現（完了）
+
+<!-- - [ ] 4-4. プロフィール完成度メーター
+  - プログレスバー表示
+  - 達成感を演出 -->
+
+**✅ チェックポイント4**: 完了
+
+---
+
+### 🎯 フェーズ5: 実績画面・UI統一の改善
+**目標**: 全ページの統一感とゲーミフィケーション
+
+- [x] 5-1. 実績画面の改善
+  - ガラスモーフィズムカード（完了）
+  - アイコン付き実績表示（完了）
+  - プログレスバー装飾（完了）
+  - 数値アニメーション（カウントアップエフェクト）（完了）
+
+- [x] 5-2. UI統一化
+  - 全ページ共通の背景グラデーション（完了）
+  - 統一されたNavigationコンポーネント（完了）
+  - ガラスモーフィズム効果の統一（完了）
+  - ボタン・カードスタイルの統一（完了）
+
+- [x] 5-3. 話題モーダルの演出
+  - チャット風吹き出しUI（完了）
+  - タイプライターアニメーション（完了）
+  - AI風の波紋エフェクト背景（完了）
+
+- [x] 5-4. トースト通知の改善
+  - カラフルなトースト（完了）
+  - アイコン付き（完了）
+  - スライドイン/アウトアニメーション（完了）
+
+- [x] 5-5. 全ページUI統一（追加実装）
+  - ルートページ（/）のデザイン統一（完了）
+  - 認証ページ（login/signup）の統一（完了）
+  - スキャンページの統一（完了）
+
+**✅ チェックポイント5**: 完了
+
+---
+
+### 🎯 フェーズ6: パフォーマンス最適化・微調整
+**目標**: 実用レベルの完成度へ
+
+- [ ] 6-1. アニメーションの最適化
+  - 重い処理の軽量化
+  - will-change の適切な使用
+
+- [ ] 6-2. レスポンシブ対応
+  - スマートフォン各サイズ確認
+  - タブレット対応
+
+- [ ] 6-3. アクセシビリティ
+  - コントラスト比の確認
+  - フォーカス状態の明確化
+
+- [ ] 6-4. ダークモード対応（オプション）
+  - カラースキーム切り替え
+  - ユーザー設定の保存
+
+**🔴 最終チェックポイント**: 本番環境での動作確認
+
+---
+
+## 🚀 実装開始順序
+
+1. **まずフェーズ1から開始** → 基盤が整ったら一度確認
+2. **フェーズ2でコンポーネント作成** → 再利用パーツ完成で確認
+3. **フェーズ3でホーム画面** → メイン画面完成で確認
+4. **フェーズ4でプロフィール** → 入力系UI完成で確認
+5. **フェーズ5で残り画面** → 全画面完成で確認
+6. **フェーズ6で仕上げ** → リリース準備完了
+
+---
+
+## 📝 注意事項
+
+- 各フェーズ完了時は必ず `npm run dev` で動作確認
+- パフォーマンスを意識（特にアニメーション）
+- モバイルファーストで実装
+- 既存機能を壊さないよう段階的に改善
+
+---
+
+## 🎯 現在のステータス
+
+**現在のフェーズ**: フェーズ5完了
+**次のタスク**: フェーズ6（必要に応じて）
+
+### 📅 進捗記録
+- **2024/12/30**: フェーズ1〜3完了
+  - 基盤整備（カラー、フォント、グローバルスタイル）
+  - コンポーネント作成（Button、Card、Modal、FAB）
+  - ホーム画面改善（QRカード、背景エフェクト、ナビゲーション）
+  - スキャンボタン配置修正
+
+- **2025/01/01**: フェーズ4〜5完了
+  - プロフィール画面改善（タグ式選択UI、ガラスモーフィズム、保存アニメーション）
+  - 実績画面改善（カウントアップ、プログレスバー、トロフィーエフェクト）
+  - 全ページUI統一化（共通背景、Navigation、スタイル統一）
+  - 話題モーダル改善（チャット風UI、タイプライターアニメーション）
+  - トースト通知改善（アイコン、アニメーション、プログレスバー）
+  - 認証ページ・スキャンページのUI統一
+
+---
+
+*このTODOリストは進捗に応じて更新されます*
+</file>
+
+<file path=".claude/settings.local.json">
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma:*)",
+      "Bash(tasklist)",
+      "Bash(taskkill:*)",
+      "Bash(cp:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
+</file>
+
+<file path=".gitignore">
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+.env
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.tsrepomix-output.xml
+</file>
+
+<file path="next.config.js">
+/** @type {import('next').NextConfig} */
+const nextConfig = {};
+
+module.exports = nextConfig;
+</file>
+
+<file path="src/app/page.tsx">
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { QrCode, UserPlus, LogIn, Sparkles, MessageCircle, Users } from 'lucide-react'
+
+export default function HomePage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600 flex items-center justify-center">
+      <div className="max-w-md w-full mx-auto p-4">
+        {/* メインカード */}
+        <div className="backdrop-blur-lg bg-white/90 rounded-3xl shadow-2xl p-8
+                      transform transition-all duration-300 hover:scale-[1.02]">
+
+          {/* ロゴ・タイトル部分 */}
+          <div className="text-center mb-8">
+            <div className="inline-flex p-4 bg-gradient-to-br from-purple-500 to-teal-500 rounded-full mb-4 shadow-lg">
+              <QrCode className="w-12 h-12 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent mb-3">
+              QR Connect
+            </h1>
+            <p className="text-gray-600 text-sm leading-relaxed">
+              QRコードで繋がる新しい出会い<br />
+              AIが話題を提案してくれる交流アプリ
+            </p>
+          </div>
+
+          {/* 特徴 */}
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="text-center">
+              <div className="p-3 bg-purple-100 rounded-xl mb-2 mx-auto w-fit">
+                <QrCode className="w-6 h-6 text-purple-600" />
+              </div>
+              <p className="text-xs text-gray-600">簡単QR交換</p>
+            </div>
+            <div className="text-center">
+              <div className="p-3 bg-pink-100 rounded-xl mb-2 mx-auto w-fit">
+                <Sparkles className="w-6 h-6 text-pink-600" />
+              </div>
+              <p className="text-xs text-gray-600">AI話題提案</p>
+            </div>
+            <div className="text-center">
+              <div className="p-3 bg-teal-100 rounded-xl mb-2 mx-auto w-fit">
+                <Users className="w-6 h-6 text-teal-600" />
+              </div>
+              <p className="text-xs text-gray-600">新しい出会い</p>
+            </div>
+          </div>
+
+          {!isLoggedIn ? (
+            <div className="space-y-3">
+              {/* ログインボタン */}
+              <Link
+                href="/auth/login"
+                className="block w-full py-4 px-6 rounded-2xl font-bold text-white text-lg
+                         bg-gradient-to-r from-purple-500 via-pink-500 to-teal-500
+                         transform transition-all duration-300 hover:scale-105 hover:shadow-xl
+                         active:scale-95 relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent
+                                -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                </div>
+                <span className="relative flex items-center justify-center gap-3">
+                  <LogIn className="w-5 h-5" />
+                  ログイン
+                </span>
+              </Link>
+
+              {/* 新規登録ボタン */}
+              <Link
+                href="/auth/signup"
+                className="block w-full py-4 px-6 rounded-2xl font-bold text-gray-700 text-lg
+                         backdrop-blur-lg bg-white/60 border-2 border-white/50
+                         transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/80
+                         active:scale-95"
+              >
+                <span className="flex items-center justify-center gap-3">
+                  <UserPlus className="w-5 h-5" />
+                  新規登録
+                </span>
+              </Link>
+
+              <p className="text-center text-xs text-gray-500 mt-4">
+                アカウントを作成して始めましょう
+              </p>
+            </div>
+          ) : (
+            <div className="text-center">
+              <div className="inline-flex p-3 bg-green-100 rounded-full mb-4">
+                <MessageCircle className="w-8 h-8 text-green-600" />
+              </div>
+              <p className="text-gray-600 mb-6">ログイン済みです</p>
+              <Link
+                href="/home"
+                className="inline-flex items-center gap-2 py-3 px-6
+                         bg-gradient-to-r from-purple-500 to-teal-500 text-white
+                         rounded-2xl font-bold hover:scale-105 transition-all duration-300 shadow-lg"
+              >
+                ホームに進む
+                <Sparkles className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* フッター */}
+        <p className="text-center text-white/60 text-xs mt-6">
+          © 2025 QR Connect - Powered by AI
+        </p>
+      </div>
+    </div>
+  )
+}
+</file>
+
+<file path="src/components/ClientAnalytics.tsx">
+"use client";
+
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, Suspense } from "react";
+
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void;
+  }
+}
+
+function Analytics() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (!GA_ID || !pathname) return;
+    const url = pathname + (searchParams?.toString() ? `?${searchParams}` : "");
+    // SPA遷移ごとにpage_view
+    window.gtag?.("config", GA_ID, { page_path: url });
+  }, [pathname, searchParams]);
+
+  return null;
+}
+
+export default function ClientAnalytics() {
+  return (
+    <Suspense fallback={null}>
+      <Analytics />
+    </Suspense>
+  );
+}
+</file>
+
+<file path="src/components/Toast.tsx">
+'use client'
+
+import { useEffect, useState } from 'react'
+import { CheckCircle, XCircle, AlertCircle, X } from 'lucide-react'
+
+interface ToastProps {
+  message: string
+  type: 'success' | 'error' | 'warning'
+  isVisible: boolean
+  onClose: () => void
+  duration?: number
+}
+
+export default function Toast({
+  message,
+  type,
+  isVisible,
+  onClose,
+  duration = 4000
+}: ToastProps) {
+  const [isAnimating, setIsAnimating] = useState(false)
+
+  useEffect(() => {
+    if (isVisible) {
+      setIsAnimating(true)
+      const timer = setTimeout(() => {
+        setIsAnimating(false)
+        setTimeout(onClose, 300) // アニメーション完了後にクローズ
+      }, duration)
+      return () => clearTimeout(timer)
+    }
+  }, [isVisible, onClose, duration])
+
+  if (!isVisible) return null
+
+  const styles = {
+    success: {
+      bg: 'from-green-500 to-teal-500',
+      border: 'border-green-400',
+      icon: CheckCircle,
+      iconColor: 'text-white',
+      glow: 'shadow-green-500/50'
+    },
+    error: {
+      bg: 'from-red-500 to-pink-500',
+      border: 'border-red-400',
+      icon: XCircle,
+      iconColor: 'text-white',
+      glow: 'shadow-red-500/50'
+    },
+    warning: {
+      bg: 'from-yellow-400 to-orange-500',
+      border: 'border-yellow-400',
+      icon: AlertCircle,
+      iconColor: 'text-white',
+      glow: 'shadow-yellow-500/50'
+    }
+  }[type]
+
+  const Icon = styles.icon
+
+  return (
+    <div className={`fixed top-20 right-4 z-50 transition-all duration-300 transform
+                    ${isAnimating ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
+      <div className={`backdrop-blur-lg bg-white/90 rounded-2xl shadow-2xl overflow-hidden
+                      border ${styles.border} max-w-sm
+                      transform transition-all duration-300 hover:scale-105 ${styles.glow}`}>
+        {/* グラデーションヘッダー */}
+        <div className={`h-1.5 bg-gradient-to-r ${styles.bg}`}></div>
+
+        <div className="px-4 py-3">
+          <div className="flex items-start gap-3">
+            {/* アイコン */}
+            <div className={`p-2 rounded-full bg-gradient-to-br ${styles.bg} flex-shrink-0
+                          shadow-lg transform transition-transform duration-300 hover:rotate-12`}>
+              <Icon className={`w-5 h-5 ${styles.iconColor}`} />
+            </div>
+
+            {/* メッセージ */}
+            <div className="flex-1 pt-1">
+              <p className="text-gray-800 font-medium text-sm leading-relaxed">
+                {message}
+              </p>
+            </div>
+
+            {/* クローズボタン */}
+            <button
+              onClick={() => {
+                setIsAnimating(false)
+                setTimeout(onClose, 300)
+              }}
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors group"
+            >
+              <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+            </button>
+          </div>
+
+          {/* プログレスバー */}
+          <div className="mt-3 h-1 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className={`h-full bg-gradient-to-r ${styles.bg} rounded-full transition-all`}
+              style={{
+                animation: `shrink ${duration}ms linear`,
+                transformOrigin: 'left'
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+</file>
+
+<file path="src/lib/cooldown.ts">
+const mem = new Map<string, number>();
+const WINDOW = 5_000; // 5 seconds - 過剰アクセス防止用の短いクールダウン
+
+export async function canScan(scannerId: string, scannedId: string) {
+  const key = `${scannerId}:${scannedId}`;
+  const now = Date.now();
+  const last = mem.get(key) ?? 0;
+
+  if (now - last < WINDOW) {
+    return { ok: false, waitMs: WINDOW - (now - last) };
+  }
+
+  mem.set(key, now);
+  return { ok: true };
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, time] of mem.entries()) {
+    if (now - time > WINDOW) {
+      mem.delete(key);
+    }
+  }
+}, WINDOW);
+</file>
+
 <file path="src/lib/session.ts">
 import { cookies } from "next/headers";
 import crypto from "crypto";
@@ -1764,7 +1536,7 @@ export function setSessionCookie(resp: any, userId: string) {
   resp.cookies.set(NAME, ticket, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "lax",  // Changed from "strict" to "lax" for mobile compatibility
     path: "/",
     maxAge: MAX_AGE,
   });
@@ -1774,7 +1546,7 @@ export function clearSessionCookie(resp: any) {
   resp.cookies.set(NAME, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "lax",  // Changed from "strict" to "lax" for consistency
     path: "/",
     maxAge: 0,
   });
@@ -1811,41 +1583,62 @@ module.exports = {
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        // メインカラー
+        'app-teal': '#28C7FA',
+        'app-violet': '#9B5DE5',
+        // アクセントカラー
+        'app-yellow': '#FEE440',
+        'app-pink': '#F15BB5',
+        'app-light-blue': '#00BBF9',
+      },
+      fontFamily: {
+        'sans': ['var(--font-noto-sans-jp)', 'var(--font-poppins)', 'system-ui'],
+        'poppins': ['var(--font-poppins)', 'system-ui'],
+      },
+      backgroundImage: {
+        'gradient-main': 'linear-gradient(135deg, #28C7FA 0%, #9B5DE5 100%)',
+        'gradient-pop': 'linear-gradient(135deg, #F15BB5 0%, #FEE440 100%)',
+        'gradient-cool': 'linear-gradient(135deg, #00BBF9 0%, #28C7FA 100%)',
+        'gradient-bg': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      },
+      boxShadow: {
+        'neon-teal': '0 0 20px rgba(40, 199, 250, 0.5)',
+        'neon-violet': '0 0 20px rgba(155, 93, 229, 0.5)',
+        'neon-pink': '0 0 20px rgba(241, 91, 181, 0.5)',
+        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+      },
+      animation: {
+        'pulse-neon': 'pulse-neon 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'float': 'float 3s ease-in-out infinite',
+        'glow': 'glow 2s ease-in-out infinite',
+      },
+      keyframes: {
+        'pulse-neon': {
+          '0%, 100%': {
+            boxShadow: '0 0 20px rgba(40, 199, 250, 0.5), 0 0 40px rgba(40, 199, 250, 0.3)',
+          },
+          '50%': {
+            boxShadow: '0 0 30px rgba(40, 199, 250, 0.8), 0 0 60px rgba(40, 199, 250, 0.5)',
+          },
+        },
+        'float': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
+        },
+        'glow': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.7' },
+        },
+      },
+      backdropFilter: {
+        'glass': 'blur(20px) saturate(180%)',
+      },
+    },
   },
   plugins: [],
 };
-</file>
-
-<file path="tsconfig.json">
-{
-  "compilerOptions": {
-    "target": "es2020",
-    "lib": ["dom", "dom.iterable", "es2020"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
-}
 </file>
 
 <file path="CLAUDE.md">
@@ -2285,7 +2078,7 @@ export async function GET() {
    - `CameraScanner.tsx` - QRスキャナー
 
 ### ✅ Vercelデプロイ対応：
-- **動的実行設定**: 全APIルートに `export const dynamic = 'force-dynamic'` 追加
+- **動的実行設定**: 全APIルートに `export const runtime = 'nodejs'` と `export const dynamic = 'force-dynamic'` 追加
 - **環境変数ドキュメント**: DEPLOYMENT_FIX.md作成
 - **本番環境での動作確認済み**
 
@@ -2295,14 +2088,41 @@ export async function GET() {
 - **Profile.profileJson型**: PostgreSQLとの互換性のためString型で保持（JSON.parse/stringifyで処理）
 - **動的レンダリング強制**: cookies()使用によるビルドエラー対策
 
+### 🚀 最近の改善（2024年12月）：
+1. **QRスキャナー実装** (CameraScanner.tsx)
+   - react-qr-scanner導入
+   - モバイル対応（背面カメラ優先）
+   - タイムアウトエラー対策（ストリームクリーンアップ）
+
+2. **UX改善**
+   - QR読み取り直後に処理中モーダル表示
+   - TopicModalにローディング状態追加
+   - 振動フィードバック（対応デバイス）
+
+3. **LLM最適化** (lib/llm.ts)
+   - データサイズ削減（選択項目のみ送信で約1/10）
+   - 503エラー時のフォールバック処理
+   - 柔軟なレスポンス解析
+
 ### 🎉 POC完成状態：
 現在、全機能が実装済みでVercelデプロイも成功。以下が動作確認済み：
 - ユーザー登録・ログイン
 - プロフィール保存・取得
-- QRコード生成・表示
-- スキャン・話題生成（Gemini連携）
+- QRコード生成・表示（カメラスキャン対応）
+- スキャン・話題生成（Gemini連携、フォールバック付き）
 - 実績カウント表示
 - 30秒クールダウン機能
+
+### 🐛 既知の問題と残タスク：
+1. **Gemini API 503エラー頻発**
+   - 現状：フォールバック処理で対応中
+   - TODO: リトライロジックの実装
+   - TODO: 別のLLMモデルへの切り替え検討（gemini-pro等）
+   - TODO: レート制限の実装検討
+
+2. **パフォーマンス最適化**
+   - TODO: プロフィールデータのさらなる軽量化
+   - TODO: キャッシュ戦略の実装
 
 ---
 
@@ -2371,15 +2191,229 @@ curl -X GET http://localhost:3000/api/qr/me \
 ```
 </file>
 
-<file path="next.config.js">
-/** @type {import('next').NextConfig} */
-const nextConfig = {};
+<file path="prisma/schema.prisma">
+generator client {
+  provider = "prisma-client-js"
+}
 
-module.exports = nextConfig;
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile      Profile?
+  counters     Counters?
+}
+
+model Profile {
+  userId      String   @id
+  profileJson String
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Counters {
+  userId        String   @id
+  scanOutCount  Int      @default(0)
+  scanInCount   Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+</file>
+
+<file path="src/app/layout.tsx">
+import './globals.css'
+import { Poppins, Noto_Sans_JP } from 'next/font/google'
+import GoogleAnalytics from '@/components/GoogleAnalytics'
+import ClientAnalytics from '@/components/ClientAnalytics'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-poppins',
+})
+
+const notoSansJP = Noto_Sans_JP({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '700'],
+  variable: '--font-noto-sans-jp',
+})
+
+export const metadata = {
+  title: 'QRプロフィール×話題提示',
+  description: '高校生向けQR交換アプリ',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="ja" className={`${poppins.variable} ${notoSansJP.variable}`}>
+      <body className="font-sans">
+        <GoogleAnalytics />
+        <ClientAnalytics />
+        <main className="min-h-screen">
+          {children}
+        </main>
+      </body>
+    </html>
+  )
+}
+</file>
+
+<file path="src/components/TopicModal.tsx">
+'use client'
+
+import { useEffect, useState } from 'react'
+import { MessageCircle, Sparkles, X, Loader2 } from 'lucide-react'
+
+interface TopicModalProps {
+  isOpen: boolean
+  message: string
+  onClose: () => void
+  isBusy?: boolean
+  title?: string
+  subtitle?: string
+}
+
+export default function TopicModal({
+  isOpen,
+  message,
+  onClose,
+  isBusy = false,
+  title = '会話の話題',
+  subtitle
+}: TopicModalProps) {
+  const [displayedMessage, setDisplayedMessage] = useState('')
+  const [isTyping, setIsTyping] = useState(false)
+
+  // タイプライターエフェクト
+  useEffect(() => {
+    if (message && !isBusy) {
+      setIsTyping(true)
+      setDisplayedMessage('')
+      let currentIndex = 0
+      const interval = setInterval(() => {
+        if (currentIndex <= message.length) {
+          setDisplayedMessage(message.slice(0, currentIndex))
+          currentIndex++
+        } else {
+          clearInterval(interval)
+          setIsTyping(false)
+        }
+      }, 30)
+      return () => clearInterval(interval)
+    }
+  }, [message, isBusy])
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4
+                  animate-fadeIn">
+      <div className="relative max-w-md w-full animate-slideInUp">
+        {/* モーダル本体 */}
+        <div className="backdrop-blur-lg bg-white/95 rounded-3xl shadow-2xl overflow-hidden
+                      transform transition-all duration-300 hover:scale-[1.02]">
+
+          {/* ヘッダー */}
+          <div className="bg-gradient-to-r from-purple-600 via-pink-500 to-teal-500 p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-full backdrop-blur-md">
+                  {isBusy ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <MessageCircle className="w-6 h-6" />
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">{title}</h2>
+                  {subtitle && (
+                    <p className="text-white/80 text-sm">{subtitle}</p>
+                  )}
+                </div>
+              </div>
+              {!isBusy && (
+                <button
+                  onClick={onClose}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* コンテンツ */}
+          <div className="p-6">
+            {isBusy ? (
+              // ローディング状態
+              <div className="flex flex-col items-center py-8">
+                {/* AI波紋エフェクト */}
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 animate-ping">
+                    <div className="w-20 h-20 bg-purple-400 rounded-full opacity-20"></div>
+                  </div>
+                  <div className="absolute inset-0 animate-ping animation-delay-200">
+                    <div className="w-20 h-20 bg-pink-400 rounded-full opacity-20"></div>
+                  </div>
+                  <div className="relative w-20 h-20 bg-gradient-to-br from-purple-500 to-teal-500 rounded-full
+                                flex items-center justify-center shadow-lg">
+                    <Sparkles className="w-10 h-10 text-white animate-pulse" />
+                  </div>
+                </div>
+                <p className="text-gray-700 font-medium animate-pulse mb-2">
+                  AIが話題を探しています
+                </p>
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                </div>
+              </div>
+            ) : (
+              // メッセージ表示（チャット風）
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-gradient-to-br from-purple-500 to-teal-500 rounded-full flex-shrink-0">
+                    <Sparkles className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500 mb-2">AI Assistant</p>
+                    <div className="bg-gradient-to-r from-purple-50 to-teal-50 rounded-2xl rounded-tl-none p-4 shadow-inner">
+                      <p className="text-gray-800 leading-relaxed">
+                        {displayedMessage}
+                        {isTyping && <span className="animate-pulse">▊</span>}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )
+}
 </file>
 
 <file path="src/app/api/auth/login/route.ts">
-// Force dynamic execution (required for cookies)
+// Force dynamic execution (required for cookies and Prisma)
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -2412,7 +2446,8 @@ export async function POST(req: NextRequest) {
 </file>
 
 <file path="src/app/api/auth/logout/route.ts">
-// Force dynamic execution (required for cookies)
+// Force dynamic execution (required for cookies and Prisma)
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -2432,7 +2467,8 @@ export async function POST(req: NextRequest) {
 </file>
 
 <file path="src/app/api/auth/signup/route.ts">
-// Force dynamic execution (required for cookies)
+// Force dynamic execution (required for cookies and Prisma)
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -2467,7 +2503,8 @@ export async function POST(req: NextRequest) {
 </file>
 
 <file path="src/app/api/metrics/me/route.ts">
-// Force dynamic execution (required for cookies)
+// Force dynamic execution (required for cookies and Prisma)
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -2494,57 +2531,9 @@ export async function GET() {
 }
 </file>
 
-<file path="src/app/api/profile/me/route.ts">
-// Force dynamic execution (required for cookies)
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
-import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/lib/session";
-import { getProfile, upsertProfile } from "@/lib/repos/profile";
-
-export async function GET() {
-  try {
-    const { userId } = requireSession();
-    const profile = await getProfile(userId);
-
-    if (!profile) {
-      return NextResponse.json({}, { status: 200 });
-    }
-
-    return NextResponse.json(profile);
-  } catch (error: any) {
-    if (error.message === "UNAUTH" || error.message === "EXPIRED" || error.message === "BADSIG") {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-    console.error("Get profile error:", error);
-    return NextResponse.json({ error: "internal" }, { status: 500 });
-  }
-}
-
-export async function PUT(req: NextRequest) {
-  try {
-    const { userId } = requireSession();
-    const profileData = await req.json();
-
-    await upsertProfile(userId, profileData);
-
-    return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    if (error.message === "UNAUTH" || error.message === "EXPIRED" || error.message === "BADSIG") {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-    if (error.message.includes("Profile data too large")) {
-      return NextResponse.json({ error: "profile_too_large" }, { status: 400 });
-    }
-    console.error("Update profile error:", error);
-    return NextResponse.json({ error: "internal" }, { status: 500 });
-  }
-}
-</file>
-
 <file path="src/app/api/qr/me/route.ts">
-// Force dynamic execution (required for cookies)
+// Force dynamic execution (required for cookies and Prisma)
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -2570,7 +2559,8 @@ export async function GET() {
 </file>
 
 <file path="src/app/api/scan/route.ts">
-// Force dynamic execution (required for cookies)
+// Force dynamic execution (required for cookies and Prisma)
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -2616,7 +2606,30 @@ export async function POST(req: NextRequest) {
       getProfile(scannedUser.id),
     ]);
 
-    const message = await generateTopic(profileA ?? {}, profileB ?? {});
+    let message: string;
+    try {
+      message = await generateTopic(profileA ?? {}, profileB ?? {});
+    } catch (llmError: any) {
+      console.error("LLM error in scan:", llmError);
+
+      // サービス利用不可の場合
+      if (llmError.message === "SERVICE_UNAVAILABLE") {
+        return NextResponse.json({
+          error: "service_unavailable",
+          message: "サービスが一時的に利用できません。少し時間をおいてから再度お試しください。"
+        }, { status: 503 });
+      }
+
+      // その他の生成エラー
+      if (llmError.message === "GENERATION_FAILED") {
+        return NextResponse.json({
+          error: "generation_failed",
+          message: "話題の生成に失敗しました。もう一度QRコードを読み取ってください。"
+        }, { status: 500 });
+      }
+
+      throw llmError; // 予期しないエラーは再スロー
+    }
 
     await incrScanOutIn(scannerId, scannedUser.id);
 
@@ -2631,42 +2644,346 @@ export async function POST(req: NextRequest) {
 }
 </file>
 
-<file path="prisma/schema.prisma">
-generator client {
-  provider = "prisma-client-js"
+<file path="src/components/CameraScanner.tsx">
+'use client';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+
+const Scanner = dynamic(
+  () => import('@yudiel/react-qr-scanner').then(m => m.Scanner),
+  { ssr: false }
+);
+
+interface CameraScannerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onScan: (data: string) => void;
 }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+export default function CameraScanner({ isOpen, onClose, onScan }: CameraScannerProps) {
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // 選択したカメラ
+  const [deviceId, setDeviceId] = useState<string | undefined>(undefined);
+  // fallback 用：front を使っているか？
+  const [usingFront, setUsingFront] = useState(false);
+
+  // アクティブなストリームを追跡
+  const activeStreamRef = useRef<MediaStream | null>(null);
+
+  // constraints 変更時に再マウントさせる key
+  const scannerKey = useMemo(
+    () => `scanner-${deviceId ?? (usingFront ? 'front' : 'env')}-${Date.now()}`,
+    [deviceId, usingFront]
+  );
+
+  // 全てのメディアストリームを停止する関数
+  const stopAllStreams = () => {
+    // activeStreamRef の解放
+    if (activeStreamRef.current) {
+      activeStreamRef.current.getTracks().forEach(track => {
+        track.stop();
+      });
+      activeStreamRef.current = null;
+    }
+
+    // 全てのビデオ要素を探してストリームを停止
+    const videos = document.querySelectorAll('video');
+    videos.forEach(video => {
+      const stream = (video as HTMLVideoElement).srcObject as MediaStream;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        (video as HTMLVideoElement).srcObject = null;
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      // モーダルを閉じる時にすべてのストリームを停止
+      stopAllStreams();
+      return;
+    }
+
+    setError(null);
+    setHasPermission(null);
+    setDeviceId(undefined);
+    setUsingFront(false);
+
+    // 少し遅延を入れて前のストリームが確実に解放されるのを待つ
+    const timeoutId = setTimeout(() => {
+      // 1) 先に権限を取る（iOS の label 問題に対応）
+      // 最初から背面カメラを要求
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      })
+        .then(async (stream) => {
+          activeStreamRef.current = stream;
+          setHasPermission(true);
+
+          // 2) カメラ列挙 → 背面候補優先
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videos = devices.filter(d => d.kind === 'videoinput');
+
+          const back = videos.find(d => /back|rear|environment/i.test(d.label));
+          if (back?.deviceId) {
+            setDeviceId(back.deviceId);
+            setUsingFront(false);
+          } else if (videos.length > 0) {
+            // 背面がなければデフォルトはenvironment制約で任せる
+            // deviceIdは指定しない（facingModeで制御）
+            setDeviceId(undefined);
+            setUsingFront(false);
+          }
+
+          // 権限取得に使ったストリームは閉じる（Scanner に任せる）
+          stream.getTracks().forEach(t => t.stop());
+          activeStreamRef.current = null;
+        })
+        .catch((err) => {
+          // 背面カメラが利用できない場合はフロントカメラで再試行
+          console.warn('背面カメラ取得失敗、フロントカメラで再試行:', err);
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+            .then(async (stream) => {
+              activeStreamRef.current = stream;
+              setHasPermission(true);
+              const devices = await navigator.mediaDevices.enumerateDevices();
+              const videos = devices.filter(d => d.kind === 'videoinput');
+              if (videos.length > 0) {
+                setDeviceId(videos[0]?.deviceId);
+                setUsingFront(true);
+              }
+              stream.getTracks().forEach(t => t.stop());
+              activeStreamRef.current = null;
+            })
+            .catch(() => {
+              setHasPermission(false);
+              setError('カメラへのアクセスが許可されていません');
+            });
+        });
+    }, 100); // 100ms の遅延
+
+    // クリーンアップ
+    return () => {
+      clearTimeout(timeoutId);
+      stopAllStreams();
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleDecode = (val: string) => {
+    try {
+      const url = new URL(val);
+      const sid = url.searchParams.get('sid');
+      if (sid) {
+        // 即座に振動フィードバック（対応デバイスのみ）
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+
+        // ストリームを停止してから閉じる
+        stopAllStreams();
+
+        // カメラを即座に閉じる（モーダル表示を優先）
+        onClose();
+
+        // スキャン結果を親コンポーネントに通知
+        onScan(sid);
+        return;
+      }
+    } catch { /* not a URL */ }
+    setError('無効なQRコードです');
+  };
+
+  const handleError = (e: any) => {
+    console.error('QR Scanner Error:', e?.name ?? e, e);
+
+    // タイムアウトエラーの場合
+    if (e?.message?.includes('timed out') || e?.message?.includes('timeout')) {
+      setError('カメラの起動に失敗しました。もう一度お試しください');
+      // ストリームをクリーンアップしてリトライ準備
+      stopAllStreams();
+      setTimeout(() => {
+        setError(null);
+        setHasPermission(null);
+        // 再初期化のためisOpenを切り替える
+        window.location.reload();
+      }, 2000);
+      return;
+    }
+
+    // 代表的なエラー → 制約を緩めて再試行
+    if (e?.name === 'OverconstrainedError' || e?.name === 'NotReadableError') {
+      // フロント使用中なら制約を極力外してブラウザに選ばせる
+      if (usingFront) {
+        setDeviceId(undefined);     // deviceId 指定を外す
+      } else {
+        setUsingFront(true);        // フロントへ切替
+      }
+      setError('カメラ切替で再試行しています…');
+      return; // Scanner は key 変化で再マウント
+    }
+    if (e?.name === 'NotAllowedError' || e?.name === 'SecurityError') {
+      setHasPermission(false);
+      setError('カメラへのアクセスが拒否されました');
+      return;
+    }
+    setError('スキャン中にエラーが発生しました');
+  };
+
+  // 最終的に Scanner に渡す制約
+  const constraints: MediaTrackConstraints | boolean =
+    deviceId
+      ? { deviceId: { exact: deviceId } }
+      : { facingMode: usingFront ? 'user' : 'environment' };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-90 flex flex-col z-50">
+      <div className="bg-white text-black p-4 flex justify-between items-center">
+        <h2 className="text-xl font-semibold">QRコードをスキャン</h2>
+        <button onClick={onClose} className="text-gray-600 hover:text-gray-800 text-2xl">✕</button>
+      </div>
+
+      <div className="flex-1 relative">
+        {hasPermission === false ? (
+          <div className="flex flex-col items-center justify-center h-full text-white p-4">
+            <svg
+              className="w-24 h-24 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
+            </svg>
+            <p className="text-center mb-4">カメラへのアクセスが拒否されました</p>
+            <p className="text-sm text-gray-300 text-center">
+              ブラウザの設定からカメラへのアクセスを許可してください
+            </p>
+          </div>
+        ) : hasPermission === null ? (
+          <div className="flex flex-col items-center justify-center h-full text-white">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
+            <p>カメラの許可を確認中...</p>
+          </div>
+        ) : (
+          <>
+            <Scanner
+              key={scannerKey}
+              onScan={(res) => { if (res && res.length > 0) handleDecode(res[0].rawValue); }}
+              onError={handleError}
+              constraints={constraints}
+              styles={{
+                container: { width: '100%', height: '100%' },
+                video: { width: '100%', height: '100%', objectFit: 'cover' as const }
+              }}
+            />
+
+            {/* Scanning overlay */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="relative w-64 h-64">
+                  {/* Corner markers */}
+                  <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-white rounded-tl-lg"></div>
+                  <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-white rounded-tr-lg"></div>
+                  <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-white rounded-bl-lg"></div>
+                  <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-white rounded-br-lg"></div>
+
+                  {/* Scanning line animation */}
+                  <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-scan"></div>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="absolute bottom-20 left-0 right-0 text-center text-white">
+                <p className="text-lg">QRコードを枠内に合わせてください</p>
+              </div>
+            </div>
+          </>
+        )}
+
+        {error && (
+          <div className="absolute top-20 left-4 right-4 bg-red-500 text-white p-4 rounded-lg">
+            <p>{error}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
+</file>
 
-model User {
-  id           String   @id @default(uuid())
-  userId       String   @unique
-  passwordHash String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+<file path="src/components/Navigation.tsx">
+'use client'
 
-  profile      Profile?
-  counters     Counters?
-}
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { Home, User, TrendingUp } from 'lucide-react'
 
-model Profile {
-  userId      String   @id
-  profileJson String
-  updatedAt   DateTime @updatedAt
+export default function Navigation() {
+  const pathname = usePathname()
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
+  const navItems = [
+    { href: '/home', label: 'ホーム', icon: Home },
+    { href: '/profile', label: 'プロフィール', icon: User },
+    { href: '/metrics', label: '実績', icon: TrendingUp },
+  ]
 
-model Counters {
-  userId        String   @id
-  scanOutCount  Int      @default(0)
-  scanInCount   Int      @default(0)
-  updatedAt     DateTime @updatedAt
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-50">
+      {/* ガラスモーフィズム背景 */}
+      <div className="backdrop-blur-xl bg-white/15 border-t border-white/20 shadow-lg">
+        <div className="max-w-md mx-auto">
+          <div className="flex justify-around py-2">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex flex-col items-center py-1.5 px-4 rounded-xl transition-all duration-300 transform
+                    ${isActive
+                      ? 'scale-105 bg-white/15'
+                      : 'hover:scale-105 hover:bg-white/10'
+                    }`}
+                >
+                  <div className={`p-1.5 rounded-full transition-all duration-300
+                    ${isActive
+                      ? 'bg-gradient-to-r from-purple-500 to-teal-500 shadow-md'
+                      : 'bg-white/10'
+                    }`}>
+                    <Icon
+                      className={`w-4 h-4 transition-colors duration-300
+                        ${isActive ? 'text-white' : 'text-white/70'}`}
+                    />
+                  </div>
+                  <span className={`text-[10px] mt-0.5 font-medium transition-colors duration-300
+                    ${isActive
+                      ? 'text-white font-bold'
+                      : 'text-white/70'
+                    }`}>
+                    {item.label}
+                  </span>
+                  {isActive && (
+                    <div className="absolute -bottom-0.5 w-8 h-0.5 bg-gradient-to-r from-purple-500 to-teal-500 rounded-full"></div>
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </nav>
+  )
 }
 </file>
 
@@ -2689,10 +3006,13 @@ model Counters {
     "@prisma/client": "^5.19.1",
     "@yudiel/react-qr-scanner": "^2.3.1",
     "autoprefixer": "^10.4.21",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.544.0",
     "next": "14.2.12",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.16.5",
@@ -2706,6 +3026,2002 @@ model Counters {
     "tailwindcss": "^3.4.10",
     "typescript": "^5.6.2"
   }
+}
+</file>
+
+<file path="src/app/api/profile/me/route.ts">
+// Force dynamic execution (required for cookies and Prisma)
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+import { NextRequest, NextResponse } from "next/server";
+import { requireSession } from "@/lib/session";
+import { getProfile, upsertProfile } from "@/lib/repos/profile";
+import { packProfileFromUI, expandProfileForUI } from "@/lib/profile-shape";
+
+export async function GET() {
+  try {
+    const { userId } = requireSession();
+    const profile = await getProfile(userId);
+
+    if (!profile) {
+      return NextResponse.json({}, { status: 200 });
+    }
+
+    return NextResponse.json(profile);
+  } catch (error: any) {
+    if (error.message === "UNAUTH" || error.message === "EXPIRED" || error.message === "BADSIG") {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    console.error("Get profile error:", error);
+    return NextResponse.json({ error: "internal" }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const { userId } = requireSession();
+    const input = await req.json();
+
+    // 入力を正規化: まず現行UIに存在するものだけに正規化してから、最小構造にパック
+    const packed = packProfileFromUI(expandProfileForUI(input));
+
+    await upsertProfile(userId, packed);
+
+    return NextResponse.json({ ok: true });
+  } catch (error: any) {
+    if (error.message === "UNAUTH" || error.message === "EXPIRED" || error.message === "BADSIG") {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    if (error.message.includes("Profile data too large")) {
+      return NextResponse.json({ error: "profile_too_large" }, { status: 400 });
+    }
+    console.error("Update profile error:", error);
+    return NextResponse.json({ error: "internal" }, { status: 500 });
+  }
+}
+</file>
+
+<file path="src/app/auth/login/page.tsx">
+'use client'
+
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { LogIn, User, Lock, ArrowLeft } from 'lucide-react'
+
+function LoginForm() {
+  const [userId, setUserId] = useState('')
+  const [password, setPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const nextPath = searchParams.get('next') || '/home'
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError('')
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Added for better cookie handling
+        body: JSON.stringify({ userId, password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Use window.location for full page reload to ensure cookies are sent
+        window.location.assign(nextPath)
+      } else {
+        setError(data.error === 'invalid_credentials' ? 'ユーザーIDまたはパスワードが正しくありません' : 'ログインに失敗しました')
+      }
+    } catch (error) {
+      setError('ネットワークエラーが発生しました')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600 flex items-center justify-center">
+      <div className="max-w-md w-full mx-auto p-4">
+        {/* 戻るボタン */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span className="text-sm">戻る</span>
+        </Link>
+
+        {/* メインカード */}
+        <div className="backdrop-blur-lg bg-white/90 rounded-3xl shadow-2xl p-8
+                      transform transition-all duration-300 hover:scale-[1.02]">
+
+          {/* ヘッダー */}
+          <div className="text-center mb-8">
+            <div className="inline-flex p-4 bg-gradient-to-br from-purple-500 to-teal-500 rounded-full mb-4 shadow-lg">
+              <LogIn className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent mb-2">
+              ログイン
+            </h1>
+            <p className="text-gray-600 text-sm">アカウントにサインインしてください</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* ユーザーID入力 */}
+            <div>
+              <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-2">
+                ユーザーID
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  id="userId"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  className="w-full pl-10 pr-3 py-3 backdrop-blur-lg bg-white/60 border border-white/50
+                           rounded-xl shadow-inner
+                           focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/80
+                           transition-all duration-300"
+                  placeholder="your_id"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* パスワード入力 */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                パスワード
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  type="password"
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-3 py-3 backdrop-blur-lg bg-white/60 border border-white/50
+                           rounded-xl shadow-inner
+                           focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/80
+                           transition-all duration-300"
+                  placeholder="••••••••"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* エラーメッセージ */}
+            {error && (
+              <div className="backdrop-blur-lg bg-red-500/10 border border-red-200 text-red-700 text-sm text-center p-3 rounded-xl">
+                {error}
+              </div>
+            )}
+
+            {/* ログインボタン */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`w-full py-4 px-6 rounded-2xl font-bold text-white text-lg
+                       transform transition-all duration-300
+                       ${isLoading
+                         ? 'bg-gray-400 cursor-wait scale-95'
+                         : 'bg-gradient-to-r from-purple-500 via-pink-500 to-teal-500 hover:scale-105 hover:shadow-2xl active:scale-95'
+                       }
+                       shadow-xl backdrop-blur-md relative overflow-hidden group`}
+            >
+              {!isLoading && (
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent
+                                -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                </div>
+              )}
+              <span className="relative flex items-center justify-center gap-3">
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                    ログイン中...
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-5 h-5" />
+                    ログイン
+                  </>
+                )}
+              </span>
+            </button>
+          </form>
+
+          {/* フッター */}
+          <div className="mt-6 text-center">
+            <p className="text-gray-600 text-sm">
+              アカウントをお持ちでない場合
+            </p>
+            <Link
+              href="/auth/signup"
+              className="inline-flex items-center gap-2 mt-2 text-purple-600 hover:text-purple-700 font-medium transition-colors"
+            >
+              新規登録はこちら
+              <ArrowLeft className="w-4 h-4 rotate-180" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+          <p className="text-white font-medium">読み込み中...</p>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
+  )
+}
+</file>
+
+<file path="src/app/auth/signup/page.tsx">
+'use client'
+
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { UserPlus, User, Lock, CheckCircle, ArrowLeft } from 'lucide-react'
+
+function SignupForm() {
+  const [userId, setUserId] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    if (password !== confirmPassword) {
+      setError('パスワードが一致しません')
+      return
+    }
+
+    if (password.length < 6) {
+      setError('パスワードは6文字以上で入力してください')
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Added for better cookie handling
+        body: JSON.stringify({ userId, password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Use window.location for full page reload to ensure cookies are sent
+        window.location.assign('/profile')
+      } else {
+        setError(data.error === 'user_exists' ? 'このユーザーIDは既に使用されています' : '新規登録に失敗しました')
+      }
+    } catch (error) {
+      setError('ネットワークエラーが発生しました')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600 flex items-center justify-center">
+      <div className="max-w-md w-full mx-auto p-4">
+        {/* 戻るボタン */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span className="text-sm">戻る</span>
+        </Link>
+
+        {/* メインカード */}
+        <div className="backdrop-blur-lg bg-white/90 rounded-3xl shadow-2xl p-8
+                      transform transition-all duration-300 hover:scale-[1.02]">
+
+          {/* ヘッダー */}
+          <div className="text-center mb-8">
+            <div className="inline-flex p-4 bg-gradient-to-br from-pink-500 to-teal-500 rounded-full mb-4 shadow-lg">
+              <UserPlus className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-teal-500 bg-clip-text text-transparent mb-2">
+              新規登録
+            </h1>
+            <p className="text-gray-600 text-sm">新しいアカウントを作成してください</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* ユーザーID入力 */}
+            <div>
+              <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-2">
+                ユーザーID
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  id="userId"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  className="w-full pl-10 pr-3 py-3 backdrop-blur-lg bg-white/60 border border-white/50
+                           rounded-xl shadow-inner
+                           focus:outline-none focus:ring-2 focus:ring-pink-400 focus:bg-white/80
+                           transition-all duration-300"
+                  placeholder="your_id"
+                  required
+                  disabled={isLoading}
+                  minLength={3}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1 ml-1">3文字以上で入力してください</p>
+            </div>
+
+            {/* パスワード入力 */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                パスワード
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  type="password"
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-3 py-3 backdrop-blur-lg bg-white/60 border border-white/50
+                           rounded-xl shadow-inner
+                           focus:outline-none focus:ring-2 focus:ring-pink-400 focus:bg-white/80
+                           transition-all duration-300"
+                  placeholder="••••••••"
+                  required
+                  disabled={isLoading}
+                  minLength={6}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1 ml-1">6文字以上で入力してください</p>
+            </div>
+
+            {/* パスワード確認 */}
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                パスワード確認
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <CheckCircle className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full pl-10 pr-3 py-3 backdrop-blur-lg bg-white/60 border border-white/50
+                           rounded-xl shadow-inner
+                           focus:outline-none focus:ring-2 focus:ring-pink-400 focus:bg-white/80
+                           transition-all duration-300"
+                  placeholder="••••••••"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* エラーメッセージ */}
+            {error && (
+              <div className="backdrop-blur-lg bg-red-500/10 border border-red-200 text-red-700 text-sm text-center p-3 rounded-xl">
+                {error}
+              </div>
+            )}
+
+            {/* 登録ボタン */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`w-full py-4 px-6 rounded-2xl font-bold text-white text-lg
+                       transform transition-all duration-300
+                       ${isLoading
+                         ? 'bg-gray-400 cursor-wait scale-95'
+                         : 'bg-gradient-to-r from-pink-500 via-purple-500 to-teal-500 hover:scale-105 hover:shadow-2xl active:scale-95'
+                       }
+                       shadow-xl backdrop-blur-md relative overflow-hidden group`}
+            >
+              {!isLoading && (
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent
+                                -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                </div>
+              )}
+              <span className="relative flex items-center justify-center gap-3">
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                    登録中...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-5 h-5" />
+                    新規登録
+                  </>
+                )}
+              </span>
+            </button>
+          </form>
+
+          {/* フッター */}
+          <div className="mt-6 text-center">
+            <p className="text-gray-600 text-sm">
+              既にアカウントをお持ちの場合
+            </p>
+            <Link
+              href="/auth/login"
+              className="inline-flex items-center gap-2 mt-2 text-purple-600 hover:text-purple-700 font-medium transition-colors"
+            >
+              ログインはこちら
+              <ArrowLeft className="w-4 h-4 rotate-180" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+          <p className="text-white font-medium">読み込み中...</p>
+        </div>
+      </div>
+    }>
+      <SignupForm />
+    </Suspense>
+  )
+}
+</file>
+
+<file path="src/app/globals.css">
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== カラーパレット定義 ===== */
+:root {
+  /* メインカラー */
+  --color-teal: #28C7FA;
+  --color-violet: #9B5DE5;
+
+  /* アクセントカラー */
+  --color-neon-yellow: #FEE440;
+  --color-pink: #F15BB5;
+  --color-light-blue: #00BBF9;
+
+  /* グラデーション */
+  --gradient-main: linear-gradient(135deg, var(--color-teal) 0%, var(--color-violet) 100%);
+  --gradient-pop: linear-gradient(135deg, var(--color-pink) 0%, var(--color-neon-yellow) 100%);
+  --gradient-cool: linear-gradient(135deg, var(--color-light-blue) 0%, var(--color-teal) 100%);
+
+  /* ガラスモーフィズム用 */
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+
+  /* ネオン効果 */
+  --neon-glow-teal: 0 0 30px rgba(40, 199, 250, 0.8), 0 0 60px rgba(40, 199, 250, 0.4);
+  --neon-glow-violet: 0 0 30px rgba(155, 93, 229, 0.8), 0 0 60px rgba(155, 93, 229, 0.4);
+  --neon-glow-pink: 0 0 30px rgba(241, 91, 181, 0.8), 0 0 60px rgba(241, 91, 181, 0.4);
+}
+
+/* ===== グローバルスタイル ===== */
+body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  font-family: var(--font-noto-sans-jp), var(--font-poppins), system-ui, -apple-system, sans-serif;
+}
+
+/* ===== ユーティリティクラス ===== */
+/* ガラスモーフィズム */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px) saturate(200%);
+  -webkit-backdrop-filter: blur(10px) saturate(200%);
+  background-image: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 8px 32px 0 rgba(31, 38, 135, 0.37),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* ネオンカード専用 */
+.neon-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(40, 199, 250, 0.1) 0%, rgba(155, 93, 229, 0.1) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.neon-card::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(135deg, var(--color-teal), var(--color-violet));
+  border-radius: 24px;
+  z-index: -1;
+  opacity: 0.7;
+  filter: blur(10px);
+  animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.02); }
+}
+
+/* ネオンテキスト */
+.text-neon-teal {
+  color: var(--color-teal);
+  text-shadow: var(--neon-glow-teal);
+}
+
+.text-neon-violet {
+  color: var(--color-violet);
+  text-shadow: var(--neon-glow-violet);
+}
+
+.text-neon-pink {
+  color: var(--color-pink);
+  text-shadow: var(--neon-glow-pink);
+}
+
+/* グラデーションテキスト */
+.text-gradient-main {
+  background: var(--gradient-main);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-pop {
+  background: var(--gradient-pop);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ボタンベーススタイル */
+.btn-gradient {
+  background: var(--gradient-main);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-gradient:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(40, 199, 250, 0.3);
+}
+
+.btn-gradient::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-gradient:hover::before {
+  left: 100%;
+}
+
+/* ===== アニメーション ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out;
+}
+
+.animate-slideInUp {
+  animation: slideInUp 0.4s ease-out;
+}
+
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+/* QR Scanner Animation */
+@keyframes scan {
+  0% {
+    top: 0;
+  }
+  50% {
+    top: calc(100% - 4px);
+  }
+  100% {
+    top: 0;
+  }
+}
+
+.animate-scan {
+  animation: scan 2s ease-in-out infinite;
+}
+
+/* Toast Progress Bar Animation */
+@keyframes shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* QR Code SVG styles */
+.qr-container svg {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+}
+</file>
+
+<file path="src/app/metrics/page.tsx">
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Navigation from '@/components/Navigation'
+import Toast from '@/components/Toast'
+import { RefreshCw, QrCode, Users, Trophy, Sparkles, TrendingUp } from 'lucide-react'
+
+interface MetricsData {
+  scanOut: number
+  scanIn: number
+}
+
+export default function MetricsPage() {
+  const [metrics, setMetrics] = useState<MetricsData>({ scanOut: 0, scanIn: 0 })
+  const [isLoading, setIsLoading] = useState(true)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; isVisible: boolean }>({
+    message: '',
+    type: 'success',
+    isVisible: false
+  })
+  const router = useRouter()
+
+  useEffect(() => {
+    fetchMetrics()
+  }, [])
+
+  const fetchMetrics = async () => {
+    try {
+      const response = await fetch('/api/metrics/me', {
+        credentials: 'include', // Added for better cookie handling
+      })
+
+      if (response.status === 401) {
+        router.push('/auth/login')
+        return
+      }
+
+      if (response.ok) {
+        const data = await response.json()
+        setMetrics(data)
+      } else {
+        showToast('実績の取得に失敗しました', 'error')
+      }
+    } catch (error) {
+      showToast('ネットワークエラーが発生しました', 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
+    setToast({ message, type, isVisible: true })
+  }
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, isVisible: false }))
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+          <p className="text-white font-medium">読み込み中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // アニメーション用のカウントアップ効果
+  const AnimatedNumber = ({ value, delay = 0 }: { value: number; delay?: number }) => {
+    const [displayValue, setDisplayValue] = useState(0)
+
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        const increment = Math.ceil(value / 20)
+        let current = 0
+        const interval = setInterval(() => {
+          current += increment
+          if (current >= value) {
+            setDisplayValue(value)
+            clearInterval(interval)
+          } else {
+            setDisplayValue(current)
+          }
+        }, 50)
+        return () => clearInterval(interval)
+      }, delay)
+      return () => clearTimeout(timer)
+    }, [value, delay])
+
+    return <>{displayValue}</>
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
+      <div className="max-w-md mx-auto p-4 pb-20">
+        <div className="flex justify-between items-center mb-4 pt-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">実績</h1>
+            <p className="text-white/80 text-xs sm:text-sm">あなたの交流記録</p>
+          </div>
+          <button
+            onClick={fetchMetrics}
+            className="p-2.5 backdrop-blur-lg bg-white/20 rounded-full
+                     hover:bg-white/30 transition-all duration-300 transform hover:scale-110
+                     shadow-lg group"
+          >
+            <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:rotate-180 transition-transform duration-500" />
+          </button>
+        </div>
+
+        {/* 実績カード */}
+        <div className="space-y-4">
+          {/* 読み取り回数 */}
+          <div className="backdrop-blur-lg bg-white/90 rounded-xl shadow-xl p-4
+                        transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className="p-2 bg-gradient-to-r from-purple-500 to-teal-500 rounded-full shadow-md">
+                    <QrCode className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                  </div>
+                  <h2 className="text-sm sm:text-base font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent">
+                    読み取り回数
+                  </h2>
+                </div>
+                <p className="text-xs text-gray-600 ml-10">
+                  他の人のQRコードをスキャン
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent">
+                  <AnimatedNumber value={metrics.scanOut} delay={200} />
+                </div>
+                <div className="text-xs text-gray-500 font-medium">回</div>
+              </div>
+            </div>
+            {/* プログレスバー風の装飾 */}
+            <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-purple-500 to-teal-500 rounded-full transition-all duration-1000"
+                style={{ width: `${Math.min((metrics.scanOut / 50) * 100, 100)}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* 読み取られ回数 */}
+          <div className="backdrop-blur-lg bg-white/90 rounded-xl shadow-xl p-4
+                        transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className="p-2 bg-gradient-to-r from-pink-500 to-yellow-400 rounded-full shadow-md">
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                  </div>
+                  <h2 className="text-sm sm:text-base font-bold bg-gradient-to-r from-pink-500 to-yellow-400 bg-clip-text text-transparent">
+                    読み取られ回数
+                  </h2>
+                </div>
+                <p className="text-xs text-gray-600 ml-10">
+                  あなたのQRコードが読まれた数
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-pink-500 to-yellow-400 bg-clip-text text-transparent">
+                  <AnimatedNumber value={metrics.scanIn} delay={400} />
+                </div>
+                <div className="text-xs text-gray-500 font-medium">回</div>
+              </div>
+            </div>
+            {/* プログレスバー風の装飾 */}
+            <div className="mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-pink-500 to-yellow-400 rounded-full transition-all duration-1000"
+                style={{ width: `${Math.min((metrics.scanIn / 50) * 100, 100)}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* 総合実績 */}
+          <div className="relative backdrop-blur-lg bg-gradient-to-r from-purple-500/90 via-pink-500/90 to-yellow-400/90
+                        rounded-xl shadow-2xl p-6 text-white overflow-hidden
+                        transform transition-all duration-300 hover:scale-[1.01]">
+            {/* 背景の光エフェクト */}
+            <div className="absolute inset-0 opacity-30">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-white rounded-full blur-3xl animate-pulse"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-yellow-300 rounded-full blur-3xl animate-pulse delay-1000"></div>
+            </div>
+
+            <div className="relative text-center">
+              <div className="inline-flex p-3 bg-white/20 rounded-full mb-3 backdrop-blur-md">
+                <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-300 animate-pulse" />
+              </div>
+              <h2 className="text-base sm:text-lg font-bold mb-2 drop-shadow-lg">総合実績</h2>
+              <div className="text-3xl sm:text-4xl font-bold mb-2 drop-shadow-lg">
+                <AnimatedNumber value={metrics.scanOut + metrics.scanIn} delay={600} />
+              </div>
+              <div className="text-xs sm:text-sm font-medium mb-3 opacity-90">
+                総交流回数
+              </div>
+
+              {/* スパークルエフェクト */}
+              <div className="flex justify-center gap-1 mb-2">
+                <Sparkles className="w-3 h-3 text-yellow-300 animate-pulse" />
+                <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse delay-100" />
+                <Sparkles className="w-3 h-3 text-yellow-300 animate-pulse delay-200" />
+              </div>
+
+              <div className="text-[10px] sm:text-xs font-medium opacity-80 leading-relaxed">
+                QRコードを通じて<br />
+                <span className="text-sm font-bold">{metrics.scanOut + metrics.scanIn}</span>回の素晴らしい出会いがありました！
+              </div>
+            </div>
+          </div>
+
+          {/* メッセージ */}
+          <div className="text-center mt-6 backdrop-blur-lg bg-white/10 rounded-2xl p-6 shadow-lg">
+            {metrics.scanOut + metrics.scanIn === 0 ? (
+              <div>
+                <TrendingUp className="w-12 h-12 text-white/70 mx-auto mb-3" />
+                <p className="text-white/90 text-sm font-medium leading-relaxed">
+                  まだ交流がありません<br />
+                  ホーム画面からQRコードを読み取って<br />
+                  新しい出会いを始めましょう！
+                </p>
+              </div>
+            ) : (
+              <div>
+                <div className="flex justify-center gap-1 mb-3">
+                  <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse" />
+                  <Sparkles className="w-8 h-8 text-yellow-300 animate-pulse delay-100" />
+                  <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse delay-200" />
+                </div>
+                <p className="text-white/90 text-sm font-medium leading-relaxed">
+                  素晴らしい交流実績です！<br />
+                  引き続き新しい出会いを楽しんでください
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ナビゲーション */}
+        <Navigation />
+
+        {/* トースト */}
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          isVisible={toast.isVisible}
+          onClose={hideToast}
+        />
+      </div>
+    </div>
+  )
+}
+</file>
+
+<file path="src/app/scan/page.tsx">
+'use client'
+
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { QrCode, Lock, User, Home, Loader2 } from 'lucide-react'
+import Link from 'next/link'
+
+function ScanContent() {
+  const router = useRouter()
+  const sp = useSearchParams()
+  const sid = sp.get('sid') || ''
+  const [state, setState] = useState<'checking'|'need-login'|'need-profile'|'redirecting'>('checking')
+
+  useEffect(() => {
+    const run = async () => {
+      if (!sid) {
+        // sidがない場合はホームにリダイレクト
+        router.push('/home')
+        return
+      }
+
+      // 認証とプロフィール完了状態を確認
+      const me = await fetch('/api/me', {
+        credentials: 'include', // Added for better cookie handling
+      })
+      if (me.status === 401) {
+        setState('need-login')
+        return
+      }
+
+      const user = await me.json().catch(() => ({}))
+      if (!user.profileCompleted) {
+        setState('need-profile')
+        return
+      }
+
+      // ホームページにリダイレクトしてモーダル表示
+      setState('redirecting')
+      router.push(`/home?scannedSid=${encodeURIComponent(sid)}`)
+    }
+
+    run()
+  }, [sid])
+
+  if (state === 'checking' || state === 'redirecting') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600 flex items-center justify-center">
+        <div className="max-w-md w-full mx-auto p-4">
+          <div className="backdrop-blur-lg bg-white/90 rounded-3xl shadow-2xl p-8
+                        transform transition-all duration-300">
+            <div className="text-center">
+              <div className="inline-flex p-4 bg-gradient-to-br from-purple-500 to-teal-500 rounded-full mb-6 shadow-lg">
+                <QrCode className="w-10 h-10 text-white animate-pulse" />
+              </div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent mb-3">
+                {state === 'redirecting' ? 'ホームへ移動中...' : 'QRコード読み取り中...'}
+              </h1>
+              <div className="flex justify-center mb-4">
+                <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+              </div>
+              <p className="text-gray-600 text-sm">処理を行っています。しばらくお待ちください。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (state === 'need-login') {
+    const next = encodeURIComponent(`/scan?sid=${sid}`)
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600 flex items-center justify-center">
+        <div className="max-w-md w-full mx-auto p-4">
+          <div className="backdrop-blur-lg bg-white/90 rounded-3xl shadow-2xl p-8
+                        transform transition-all duration-300 hover:scale-[1.02]">
+            <div className="text-center mb-8">
+              <div className="inline-flex p-4 bg-gradient-to-br from-purple-500 to-teal-500 rounded-full mb-4 shadow-lg">
+                <Lock className="w-10 h-10 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent mb-3">
+                ログインが必要です
+              </h1>
+              <p className="text-gray-600 text-sm">
+                QRコードの内容を確認するにはサインインしてください。
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Link
+                href={`/auth/login?next=${next}`}
+                className="block w-full py-4 px-6 rounded-2xl font-bold text-white text-lg
+                         bg-gradient-to-r from-purple-500 via-pink-500 to-teal-500
+                         transform transition-all duration-300 hover:scale-105 hover:shadow-xl
+                         active:scale-95 relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent
+                                -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                </div>
+                <span className="relative">ログイン</span>
+              </Link>
+
+              <Link
+                href={`/auth/signup?next=${next}`}
+                className="block w-full py-4 px-6 rounded-2xl font-bold text-gray-700 text-lg
+                         backdrop-blur-lg bg-white/60 border-2 border-white/50
+                         transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/80
+                         active:scale-95"
+              >
+                新規登録
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (state === 'need-profile') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600 flex items-center justify-center">
+        <div className="max-w-md w-full mx-auto p-4">
+          <div className="backdrop-blur-lg bg-white/90 rounded-3xl shadow-2xl p-8
+                        transform transition-all duration-300 hover:scale-[1.02]">
+            <div className="text-center mb-8">
+              <div className="inline-flex p-4 bg-gradient-to-br from-pink-500 to-teal-500 rounded-full mb-4 shadow-lg">
+                <User className="w-10 h-10 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-teal-500 bg-clip-text text-transparent mb-3">
+                プロフィール設定が必要です
+              </h1>
+              <p className="text-gray-600 text-sm">
+                会話を始めるにはプロフィール設定が必要です。
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Link
+                href="/profile?from=scan"
+                className="block w-full py-4 px-6 rounded-2xl font-bold text-white text-lg
+                         bg-gradient-to-r from-pink-500 via-purple-500 to-teal-500
+                         transform transition-all duration-300 hover:scale-105 hover:shadow-xl
+                         active:scale-95 relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent
+                                -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                </div>
+                <span className="relative flex items-center justify-center gap-3">
+                  <User className="w-5 h-5" />
+                  プロフィールを設定する
+                </span>
+              </Link>
+
+              <Link
+                href="/home"
+                className="block w-full py-4 px-6 rounded-2xl font-bold text-gray-700 text-lg
+                         backdrop-blur-lg bg-white/60 border-2 border-white/50
+                         transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/80
+                         active:scale-95 text-center"
+              >
+                <span className="flex items-center justify-center gap-3">
+                  <Home className="w-5 h-5" />
+                  ホームへ
+                </span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // 他の状態では何も表示しない（リダイレクト処理中）
+  return null
+}
+
+export default function ScanLandingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+          <p className="text-white font-medium">読み込み中...</p>
+        </div>
+      </div>
+    }>
+      <ScanContent />
+    </Suspense>
+  )
+}
+</file>
+
+<file path="src/lib/llm.ts">
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+
+// プロフィールを確認（Packed形式のみ対応）
+function validatePackedProfile(profile: any): any {
+  // Packed形式（配列）であることを確認
+  if (!profile || typeof profile !== 'object') {
+    return {};
+  }
+
+  // すべての値が配列であることを確認
+  const isPacked = Object.values(profile).every(v => Array.isArray(v));
+  if (!isPacked) {
+    console.warn('Profile is not in packed format, returning empty');
+    return {};
+  }
+
+  return profile;
+}
+
+// リトライ機能付きのGemini API呼び出し
+async function generateContentWithRetry(
+  prompt: any,
+  maxRetries: number = 3,
+  initialDelay: number = 1000
+): Promise<any> {
+  let lastError: any;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt + 1}/${maxRetries} to generate content...`);
+
+      const result = await model.generateContent({
+        contents: prompt,
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.7,  // 安定性向上のため温度を設定
+          maxOutputTokens: 256,  // 出力トークン数を制限
+        }
+      });
+
+      // 成功したら結果を返す
+      return result;
+
+    } catch (error: any) {
+      lastError = error;
+      console.error(`Attempt ${attempt + 1} failed:`, error?.message || error);
+
+      // 503エラーの場合のみリトライ
+      if (error?.status === 503 && attempt < maxRetries - 1) {
+        const delay = initialDelay * Math.pow(2, attempt); // 指数バックオフ
+        console.log(`Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+
+      // 503以外のエラーまたは最後の試行の場合はエラーを投げる
+      throw error;
+    }
+  }
+
+  // すべての試行が失敗した場合
+  throw lastError;
+}
+
+export async function generateTopic(profileA: any, profileB: any): Promise<string> {
+  try {
+    // Packed形式のプロフィールを検証
+    const simplifiedA = validatePackedProfile(profileA);
+    const simplifiedB = validatePackedProfile(profileB);
+
+    // デバッグ用ログ
+    console.log("=== LLM Debug ===");
+    console.log("Simplified Profile A:", JSON.stringify(simplifiedA, null, 2));
+    console.log("Simplified Profile B:", JSON.stringify(simplifiedB, null, 2));
+    console.log("API Key exists:", !!process.env.GOOGLE_GEMINI_API_KEY);
+
+    // システムプロンプトの設定
+    const systemPrompt = `あなたは高校生の初対面会話を支援するアシスタントです。
+安全で楽しい話題のみ提案し、政治・宗教・個人情報は避けてください。
+出力は必ずJSON形式: {"message": "話題内容"}`;
+
+    // 改善されたプロンプト
+    const promptText = `
+## タスク
+二人の高校生プロフィールから会話の話題を1つ提案
+
+## プロフィールデータ
+- プロフィール1: ${JSON.stringify(simplifiedA)}
+- プロフィール2: ${JSON.stringify(simplifiedB)}
+- 形式: {カテゴリ: [{name: "選択項目", text: "自由記述"}]}
+
+## 話題生成ルール
+1. **共通点発見時**: "おふたりは○○が共通点なようです。[具体的な質問]"
+2. **共通点なし時**: 両プロフィールを組み合わせた新しい話題
+3. **出力要件**:
+   - 1-2文で完結
+   - 質問形式で終わる
+   - 高校生らしい自然な表現
+
+## クロスオーバー話題例
+- スポーツ×音楽 → "運動時のBGMや応援歌"
+- 読書×映画 → "原作と映画化作品の比較"
+- 料理×アニメ → "アニメに出てくる料理の再現"
+- ゲーム×勉強 → "ゲームで学んだことや集中力向上"
+- アート×テクノロジー → "デジタルアートや創作ツール"
+
+## 例
+共通点あり: "おふたりは音楽が共通点なようです。最近よく聴くアーティストはありますか？"
+クロスオーバー: "スポーツをされる方と読書好きの方ですね。体を動かした後の本はいかがですか？"
+
+出力形式: {"message": "話題の内容"}`;
+
+    const prompt = [
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "user", parts: [{ text: promptText }] }
+    ];
+
+    console.log("Sending simplified prompt to Gemini...");
+
+    // リトライ機能付きでAPI呼び出し
+    const result = await generateContentWithRetry(prompt);
+
+    const response = result.response;
+    let text = response.text().trim();
+    console.log("Raw response from Gemini:", text);
+
+    // 念のためマークダウンのコードブロックを除去
+    if (text.startsWith('```json')) {
+      text = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+    } else if (text.startsWith('```')) {
+      text = text.replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
+    }
+
+    try {
+      const parsed = JSON.parse(text);
+      console.log("Parsed message:", parsed.message);
+      return parsed.message || "音楽はよく聴きますか？最近のお気に入りがあれば教えてください。";
+    } catch (parseError) {
+      console.error("Failed to parse JSON response:", parseError);
+
+      // JSONではない場合、直接テキストとして使用を試みる
+      if (text && text.length > 10 && !text.toLowerCase().includes('error')) {
+        // 「」や""で囲まれた部分を抽出
+        const match = text.match(/[「"](.*?)[」"]/);
+        if (match) {
+          return match[1];
+        }
+        // そのまま返す（ただし、改行や余計な記号は除去）
+        return text.replace(/[\n\r\"]/g, '').trim();
+      }
+
+      return "音楽はよく聴きますか？最近のお気に入りがあれば教えてください。";
+    }
+  } catch (error) {
+    console.error("LLM generation error:", error);
+
+    // 503エラーの場合、再試行を促す
+    if ((error as any)?.status === 503) {
+      console.log("503 error detected - service temporarily unavailable");
+      throw new Error("SERVICE_UNAVAILABLE");
+    }
+
+    // その他のエラーの場合も再試行を促す
+    throw new Error("GENERATION_FAILED");
+  }
+}
+</file>
+
+<file path="src/app/profile/page.tsx">
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Navigation from '@/components/Navigation'
+import Toast from '@/components/Toast'
+import { TOPICS } from '@/lib/topics'
+import { expandProfileForUI, packProfileFromUI } from '@/lib/profile-shape'
+import type { UIProfile } from '@/lib/profile-shape'
+import { CheckCircle, Sparkles, Save } from 'lucide-react'
+
+interface ProfileData {
+  [topicId: string]: {
+    [option: string]: {
+      selected: boolean
+      freeText: string
+    }
+  }
+}
+
+export default function ProfilePage() {
+  const [profile, setProfile] = useState<UIProfile>({})
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set())
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; isVisible: boolean }>({
+    message: '',
+    type: 'success',
+    isVisible: false
+  })
+  const router = useRouter()
+
+  useEffect(() => {
+    fetchProfile()
+  }, [])
+
+
+  const fetchProfile = async () => {
+    try {
+      const response = await fetch('/api/profile/me', {
+        credentials: 'include', // Added for better cookie handling
+      })
+
+      if (response.status === 401) {
+        router.push('/auth/login')
+        return
+      }
+
+      if (response.ok) {
+        const data = await response.json()
+        setProfile(expandProfileForUI(data)) // 現行UIにだけ反映
+      } else {
+        setProfile(expandProfileForUI({})) // 空をUI既定に
+      }
+    } catch (error) {
+      showToast('プロフィールの取得に失敗しました', 'error')
+      setProfile(expandProfileForUI({}))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
+    setToast({ message, type, isVisible: true })
+  }
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, isVisible: false }))
+  }
+
+  const handleOptionToggle = (topicId: string, option: string) => {
+    setProfile(prev => ({
+      ...prev,
+      [topicId]: {
+        ...prev[topicId],
+        [option]: {
+          ...prev[topicId][option],
+          selected: !prev[topicId][option].selected
+        }
+      }
+    }))
+  }
+
+  const handleFreeTextChange = (topicId: string, option: string, value: string) => {
+    setProfile(prev => ({
+      ...prev,
+      [topicId]: {
+        ...prev[topicId],
+        [option]: {
+          ...prev[topicId][option],
+          freeText: value
+        }
+      }
+    }))
+  }
+
+  const toggleTopic = (topicId: string) => {
+    setExpandedTopics(prev => {
+      const newSet = new Set<string>()
+      // 現在開いているものをクリックした場合は閉じる
+      // そうでない場合は、クリックしたものだけを開く
+      if (!prev.has(topicId)) {
+        newSet.add(topicId)
+      }
+      return newSet
+    })
+  }
+
+  const hasSelectedOptions = (topicId: string) => {
+    return Object.values(profile[topicId] || {}).some(option => option.selected)
+  }
+
+  const handleSave = async () => {
+    setIsSaving(true)
+
+    try {
+      const packed = packProfileFromUI(profile) // 最小構造で送る
+      const response = await fetch('/api/profile/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Added for better cookie handling
+        body: JSON.stringify(packed),
+      })
+
+      if (response.status === 401) {
+        router.push('/auth/login')
+        return
+      }
+
+      if (response.ok) {
+        showToast('プロフィールを保存しました', 'success')
+        // 保存成功後、少し待ってからホーム画面へ遷移
+        setTimeout(() => {
+          router.push('/home')
+        }, 1000)
+      } else {
+        showToast('保存に失敗しました', 'error')
+      }
+    } catch (error) {
+      showToast('ネットワークエラーが発生しました', 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+          <p className="text-white font-medium">読み込み中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
+      <div className="max-w-md mx-auto p-4 pb-20">
+        <div className="text-center mb-4 pt-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-white mb-1 drop-shadow-lg">プロフィール設定</h1>
+          <p className="text-white/80 text-xs sm:text-sm">興味のあることをタップしてね！</p>
+        </div>
+
+      {/* ガイダンス */}
+      {/* <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <p className="text-sm text-blue-800">
+              まずプロフィールを設定してください。設定後、ホームから相手のQRを読み取るか、自分のQRを表示できます。
+            </p>
+          </div>
+        </div>
+      </div> */}
+
+        <div className="space-y-4">
+          {Object.entries(TOPICS).map(([topicId, topic]) => {
+            const isExpanded = expandedTopics.has(topicId)
+            const hasSelections = hasSelectedOptions(topicId)
+
+            return (
+              <div key={topicId}
+                   className="backdrop-blur-lg bg-white/90 rounded-xl shadow-xl overflow-hidden
+                            transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl">
+                {/* トピックヘッダー（クリック可能） */}
+                <button
+                  onClick={() => toggleTopic(topicId)}
+                  className="w-full p-4 flex items-center justify-between
+                           bg-gradient-to-r from-white/50 to-white/30
+                           hover:from-white/60 hover:to-white/40 transition-all duration-300"
+                >
+                  <div className="flex items-center space-x-2">
+                    <div className={`text-2xl transform transition-transform duration-300 ${isExpanded ? 'rotate-12 scale-110' : ''}`}>
+                      {topic.icon}
+                    </div>
+                    <h2 className="text-sm sm:text-base font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent">
+                      {topic.label}
+                    </h2>
+                    {hasSelections && (
+                      <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {hasSelections && (
+                      <span className="px-2 py-1 text-xs font-bold text-white bg-gradient-to-r from-purple-500 to-teal-500 rounded-full">
+                        {Object.values(profile[topicId] || {}).filter(option => option.selected).length}
+                      </span>
+                    )}
+                    <svg
+                      className={`w-5 h-5 text-purple-500 transition-transform duration-300 ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+
+                {/* 選択肢（展開時のみ表示） - タグスタイル */}
+                {isExpanded && (
+                  <div className="p-4 space-y-4 bg-white/40">
+                    {/* タグ選択エリア */}
+                    <div className="flex flex-wrap gap-2">
+                      {topic.options.map((option) => {
+                        const isSelected = profile[topicId]?.[option]?.selected || false
+                        return (
+                          <button
+                            key={option}
+                            onClick={() => handleOptionToggle(topicId, option)}
+                            className={`px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 transform
+                              ${isSelected
+                                ? 'bg-gradient-to-r from-purple-500 to-teal-500 text-white scale-105 shadow-lg'
+                                : 'bg-white/60 text-gray-700 hover:bg-white/80 hover:scale-105 shadow-md'
+                              }`}
+                          >
+                            <span className="flex items-center gap-1">
+                              {isSelected && <CheckCircle className="w-3 h-3" />}
+                              {option}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* 選択されたタグの詳細入力 */}
+                    <div className="space-y-3">
+                      {topic.options.filter(option => profile[topicId]?.[option]?.selected).map((option) => (
+                        <div key={option} className="backdrop-blur-md bg-white/50 rounded-xl p-3 shadow-inner">
+                          <label className="text-sm font-medium text-purple-700 mb-1 block">
+                            {option}の詳細
+                          </label>
+                          <input
+                            type="text"
+                            value={profile[topicId][option].freeText}
+                            onChange={(e) => handleFreeTextChange(topicId, option, e.target.value)}
+                            placeholder="詳しく教えてください"
+                            className="w-full h-10 px-3 py-2 text-sm
+                                     backdrop-blur-lg bg-white/60 border border-white/50
+                                     rounded-lg shadow-inner
+                                     focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/80
+                                     transition-all duration-300"
+                            maxLength={100}
+                            style={{ fontSize: '16px' }}
+                          />
+                          <p className="text-xs text-purple-600 mt-1 text-right font-medium">
+                            {profile[topicId][option].freeText.length}/100
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* 保存ボタン */}
+        <div className="mt-6 relative">
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className={`w-full py-3 px-4 rounded-xl font-bold text-white text-base sm:text-lg
+                     transform transition-all duration-300
+                     ${isSaving
+                       ? 'bg-gray-400 cursor-wait scale-95'
+                       : 'bg-gradient-to-r from-pink-500 via-purple-500 to-teal-500 hover:scale-105 hover:shadow-2xl active:scale-95'
+                     }
+                     shadow-xl backdrop-blur-md relative overflow-hidden group`}
+          >
+            {/* キラキラエフェクト */}
+            {!isSaving && (
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent
+                              -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+              </div>
+            )}
+
+            <span className="relative flex items-center justify-center gap-2">
+              {isSaving ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                  保存中...
+                </>
+              ) : (
+                <>
+                  <Save className="w-5 h-5" />
+                  プロフィールを保存
+                  <Sparkles className="w-4 h-4 animate-pulse" />
+                </>
+              )}
+            </span>
+          </button>
+
+          {/* 保存成功時のパーティクルエフェクト（オプション） */}
+          {toast.type === 'success' && toast.isVisible && (
+            <div className="absolute inset-0 pointer-events-none">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-ping"
+                  style={{
+                    left: `${20 + i * 15}%`,
+                    top: '50%',
+                    animationDelay: `${i * 0.1}s`,
+                    animationDuration: '1s',
+                  }}
+                ></div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ナビゲーション */}
+        <Navigation />
+
+        {/* トースト */}
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          isVisible={toast.isVisible}
+          onClose={hideToast}
+        />
+      </div>
+    </div>
+  )
+}
+</file>
+
+<file path="src/app/home/page.tsx">
+'use client'
+
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Navigation from '@/components/Navigation'
+import { LogOut, QrCode, Scan } from 'lucide-react'
+import TopicModal from '@/components/TopicModal'
+import Toast from '@/components/Toast'
+import CameraScanner from '@/components/CameraScanner'
+
+function HomeContent() {
+  const [qrData, setQrData] = useState<{ url: string; svg: string } | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [topic, setTopic] = useState<string>('')
+  const [showTopicModal, setShowTopicModal] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
+  const [isTopicLoading, setIsTopicLoading] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; isVisible: boolean }>({
+    message: '',
+    type: 'success',
+    isVisible: false
+  })
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    fetchQR()
+  }, [])
+
+  const fetchQR = async () => {
+    try {
+      const response = await fetch('/api/qr/me', {
+        credentials: 'include', // Added for better cookie handling
+      })
+
+      if (response.status === 401) {
+        router.push('/auth/login')
+        return
+      }
+
+      if (response.ok) {
+        const data = await response.json()
+        setQrData(data)
+      } else {
+        showToast('QRコードの取得に失敗しました', 'error')
+      }
+    } catch (error) {
+      showToast('ネットワークエラーが発生しました', 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
+    setToast({ message, type, isVisible: true })
+  }
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, isVisible: false }))
+  }
+
+  const handleScanResult = useCallback(async (scannedSid: string) => {
+    // 即座に処理中モーダルを表示
+    setIsTopicLoading(true)
+    setTopic('')
+    setShowTopicModal(true)
+
+    try {
+      const response = await fetch('/api/scan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Added for better cookie handling
+        body: JSON.stringify({ scannedSid }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // 成功: モーダルの内容を更新
+        setTopic(data.message)
+        setIsTopicLoading(false)
+        showToast('話題が見つかりました！', 'success')
+      } else if (response.status === 429) {
+        // クールダウン: モーダルを閉じてトーストで通知
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
+        showToast(data.message || '時間をおいてトライしてください ⏳', 'warning')
+      } else if (response.status === 503) {
+        // サービス一時利用不可
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
+        showToast(data.message || 'サービスが一時的に利用できません。少し時間をおいてから再度お試しください。', 'warning')
+      } else if (response.status === 500 && data.error === 'generation_failed') {
+        // 生成失敗
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
+        showToast(data.message || '話題の生成に失敗しました。もう一度QRコードを読み取ってください。', 'warning')
+      } else if (response.status === 401) {
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
+        router.push('/auth/login')
+      } else if (response.status === 400 && data.error === 'self_scan') {
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
+        showToast('自分のQRコードはスキャンできません', 'warning')
+      } else if (response.status === 404) {
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
+        showToast('ユーザーが見つかりませんでした', 'error')
+      } else {
+        setIsTopicLoading(false)
+        setShowTopicModal(false)
+        showToast('スキャンに失敗しました', 'error')
+      }
+    } catch (error) {
+      setIsTopicLoading(false)
+      setShowTopicModal(false)
+      showToast('ネットワークエラーが発生しました', 'error')
+    }
+  }, [router])
+
+  // URL経由のスキャン処理
+  useEffect(() => {
+    const scannedSid = searchParams.get('scannedSid')
+    if (scannedSid && !isLoading) {
+      // URLパラメータをクリア
+      router.replace('/home')
+      // スキャン処理を実行
+      handleScanResult(scannedSid)
+    }
+  }, [searchParams, isLoading, router, handleScanResult])
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include', // Added for better cookie handling
+      })
+      router.push('/')
+    } catch (error) {
+      showToast('ログアウトに失敗しました', 'error')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+          <p className="text-white font-medium">読み込み中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
+      {/* メインコンテンツ */}
+      <div className="max-w-md mx-auto p-4 pb-20">
+        {/* ヘッダー */}
+        <div className="flex justify-between items-center mb-4 pt-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">ホーム</h1>
+            <p className="text-white/80 text-xs sm:text-sm">QRコードで新しい出会いを</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="p-2.5 backdrop-blur-lg bg-white/20 rounded-full
+                     hover:bg-white/30 transition-all duration-300 transform hover:scale-110
+                     shadow-lg group"
+          >
+            <LogOut className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+          </button>
+        </div>
+
+        {/* QRカード */}
+        <div className="backdrop-blur-lg bg-white/90 rounded-2xl shadow-xl p-4 mb-6
+                      transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl">
+          <div className="text-center mb-3">
+            <h2 className="text-base sm:text-lg font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent mb-1">
+              あなたのQRコード
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-600">友達に読み取ってもらおう</p>
+          </div>
+
+          {qrData ? (
+            <div className="bg-white rounded-lg p-3 shadow-inner flex items-center justify-center">
+              <div
+                className="qr-container w-full max-w-[200px] sm:max-w-[240px] aspect-square"
+                dangerouslySetInnerHTML={{ __html: qrData.svg }}
+                style={{
+                  display: 'block'
+                }}
+              />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-48 sm:h-64">
+              <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-4 border-purple-500 border-t-transparent"></div>
+            </div>
+          )}
+        </div>
+
+        {/* スキャンボタン */}
+        <button
+          onClick={() => setShowScanner(true)}
+          className="w-full py-3 px-4 rounded-xl font-bold text-white text-base sm:text-lg
+                   bg-gradient-to-r from-pink-500 via-purple-500 to-teal-500
+                   transform transition-all duration-300 hover:scale-105 hover:shadow-2xl active:scale-95
+                   shadow-xl backdrop-blur-md relative overflow-hidden group"
+        >
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent
+                          -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+          </div>
+          <span className="relative flex items-center justify-center gap-2">
+            <Scan className="w-5 h-5" />
+            相手のQRコードを読み取る
+          </span>
+        </button>
+      </div>
+
+      {/* ナビゲーション */}
+      <Navigation />
+
+      {/* カメラスキャナー */}
+      <CameraScanner
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={handleScanResult}
+      />
+
+      {/* モーダル */}
+      <TopicModal
+        isOpen={showTopicModal}
+        message={topic}
+        isBusy={isTopicLoading}
+        title={isTopicLoading ? 'QRコード読み取り完了' : '会話の話題'}
+        subtitle={isTopicLoading ? 'AIが話題を生成しています' : undefined}
+        onClose={() => {
+          setShowTopicModal(false)
+          setIsTopicLoading(false)
+        }}
+      />
+
+      {/* トースト */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+      />
+    </div>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+          <p className="text-white font-medium">読み込み中...</p>
+        </div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
+  )
 }
 </file>
 

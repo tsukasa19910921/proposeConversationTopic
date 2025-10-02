@@ -5,7 +5,7 @@ export async function generateQR(url: string): Promise<string> {
     const svg = await QRCode.toString(url, {
       type: "svg",
       errorCorrectionLevel: "M",
-      margin: 0,
+      margin: 2,  // QR内側に均等な白縁を確保
     });
     return svg;
   } catch (error) {

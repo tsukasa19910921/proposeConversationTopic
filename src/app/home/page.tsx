@@ -186,9 +186,9 @@ function HomeContent() {
           </div>
 
           {qrData ? (
-            <div className="bg-white rounded-lg p-3 shadow-inner flex items-center justify-center">
+            <div className="bg-white rounded-lg p-2 sm:p-3 shadow-inner flex items-center justify-center aspect-square">
               <div
-                className="qr-container w-full max-w-[200px] sm:max-w-[240px] aspect-square"
+                className="qr-container w-full max-w-[260px] sm:max-w-[300px] aspect-square"
                 dangerouslySetInnerHTML={{ __html: qrData.svg }}
                 style={{
                   display: 'block'
