@@ -2,6 +2,7 @@ import './globals.css'
 import { Poppins, Noto_Sans_JP } from 'next/font/google'
 import GoogleAnalytics from '@/components/GoogleAnalytics'
 import ClientAnalytics from '@/components/ClientAnalytics'
+import { ToastProvider, ToastPortal } from '@/hooks/useToast'
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -30,9 +31,12 @@ export default function RootLayout({
       <body className="font-sans">
         <GoogleAnalytics />
         <ClientAnalytics />
-        <main className="min-h-screen">
-          {children}
-        </main>
+        <ToastProvider>
+          <main className="min-h-screen">
+            {children}
+          </main>
+          <ToastPortal />
+        </ToastProvider>
       </body>
     </html>
   )

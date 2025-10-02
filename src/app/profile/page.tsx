@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Navigation from '@/components/Navigation'
-import Toast from '@/components/Toast'
 import { TOPICS } from '@/lib/topics'
 import { expandProfileForUI, packProfileFromUI } from '@/lib/profile-shape'
 import type { UIProfile } from '@/lib/profile-shape'
 import { CheckCircle, Sparkles, Save } from 'lucide-react'
+import { LoadingScreen } from '@/components/LoadingScreen'
+import { useToast } from '@/hooks/useToast'
+import { useApi } from '@/hooks/useApi'
 
 interface ProfileData {
   [topicId: string]: {
@@ -23,12 +25,10 @@ export default function ProfilePage() {
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; isVisible: boolean }>({
-    message: '',
-    type: 'success',
-    isVisible: false
-  })
+
   const router = useRouter()
+  const { show } = useToast()
+  const { json } = useApi()
 
   useEffect(() => {
     fetchProfile()
@@ -37,35 +37,16 @@ export default function ProfilePage() {
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch('/api/profile/me', {
-        credentials: 'include', // Added for better cookie handling
-      })
-
-      if (response.status === 401) {
-        router.push('/auth/login')
-        return
+      const data = await json('/api/profile/me')
+      setProfile(expandProfileForUI(data)) // 現行UIにだけ反映
+    } catch (error: any) {
+      if (error.status !== 401) { // 401は useApi が自動でリダイレクト
+        show('プロフィールの取得に失敗しました', 'error')
       }
-
-      if (response.ok) {
-        const data = await response.json()
-        setProfile(expandProfileForUI(data)) // 現行UIにだけ反映
-      } else {
-        setProfile(expandProfileForUI({})) // 空をUI既定に
-      }
-    } catch (error) {
-      showToast('プロフィールの取得に失敗しました', 'error')
       setProfile(expandProfileForUI({}))
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
-    setToast({ message, type, isVisible: true })
-  }
-
-  const hideToast = () => {
-    setToast(prev => ({ ...prev, isVisible: false }))
   }
 
   const handleOptionToggle = (topicId: string, option: string) => {
@@ -115,45 +96,27 @@ export default function ProfilePage() {
 
     try {
       const packed = packProfileFromUI(profile) // 最小構造で送る
-      const response = await fetch('/api/profile/me', {
+      await json('/api/profile/me', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Added for better cookie handling
         body: JSON.stringify(packed),
       })
 
-      if (response.status === 401) {
-        router.push('/auth/login')
-        return
+      show('プロフィールを保存しました', 'success')
+      // 保存成功後、少し待ってからホーム画面へ遷移
+      setTimeout(() => {
+        router.push('/home')
+      }, 1000)
+    } catch (error: any) {
+      if (error.status !== 401) {
+        show('保存に失敗しました', 'error')
       }
-
-      if (response.ok) {
-        showToast('プロフィールを保存しました', 'success')
-        // 保存成功後、少し待ってからホーム画面へ遷移
-        setTimeout(() => {
-          router.push('/home')
-        }, 1000)
-      } else {
-        showToast('保存に失敗しました', 'error')
-      }
-    } catch (error) {
-      showToast('ネットワークエラーが発生しました', 'error')
     } finally {
       setIsSaving(false)
     }
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
-          <p className="text-white font-medium">読み込み中...</p>
-        </div>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   return (
@@ -322,35 +285,10 @@ export default function ProfilePage() {
             </span>
           </button>
 
-          {/* 保存成功時のパーティクルエフェクト（オプション） */}
-          {toast.type === 'success' && toast.isVisible && (
-            <div className="absolute inset-0 pointer-events-none">
-              {[...Array(6)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-ping"
-                  style={{
-                    left: `${20 + i * 15}%`,
-                    top: '50%',
-                    animationDelay: `${i * 0.1}s`,
-                    animationDuration: '1s',
-                  }}
-                ></div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* ナビゲーション */}
         <Navigation />
-
-        {/* トースト */}
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          isVisible={toast.isVisible}
-          onClose={hideToast}
-        />
       </div>
     </div>
   )

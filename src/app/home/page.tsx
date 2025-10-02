@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navigation from '@/components/Navigation'
-import { LogOut, QrCode, Scan } from 'lucide-react'
+import { LogOut, Scan } from 'lucide-react'
 import TopicModal from '@/components/TopicModal'
-import Toast from '@/components/Toast'
 import CameraScanner from '@/components/CameraScanner'
+import { LoadingScreen } from '@/components/LoadingScreen'
+import { useToast } from '@/hooks/useToast'
+import { useApi } from '@/hooks/useApi'
 
 function HomeContent() {
   const [qrData, setQrData] = useState<{ url: string; svg: string } | null>(null)
@@ -15,13 +17,11 @@ function HomeContent() {
   const [showTopicModal, setShowTopicModal] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
   const [isTopicLoading, setIsTopicLoading] = useState(false)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; isVisible: boolean }>({
-    message: '',
-    type: 'success',
-    isVisible: false
-  })
+
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { show } = useToast()
+  const { json } = useApi()
 
   useEffect(() => {
     fetchQR()
@@ -29,35 +29,15 @@ function HomeContent() {
 
   const fetchQR = async () => {
     try {
-      const response = await fetch('/api/qr/me', {
-        credentials: 'include', // Added for better cookie handling
-      })
-
-      if (response.status === 401) {
-        router.push('/auth/login')
-        return
-      }
-
-      if (response.ok) {
-        const data = await response.json()
-        setQrData(data)
-      } else {
-        showToast('QRコードの取得に失敗しました', 'error')
-      }
-    } catch (error) {
-      showToast('ネットワークエラーが発生しました', 'error')
+      const data = await json<{ url: string; svg: string }>('/api/qr/me')
+      setQrData(data)
+    } catch (error: any) {
+      show('QRコードの取得に失敗しました', 'error')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
-    setToast({ message, type, isVisible: true })
-  }
-
-  const hideToast = () => {
-    setToast(prev => ({ ...prev, isVisible: false }))
-  }
 
   const handleScanResult = useCallback(async (scannedSid: string) => {
     // 即座に処理中モーダルを表示
@@ -81,22 +61,22 @@ function HomeContent() {
         // 成功: モーダルの内容を更新
         setTopic(data.message)
         setIsTopicLoading(false)
-        showToast('話題が見つかりました！', 'success')
+        show('話題が見つかりました！', 'success')
       } else if (response.status === 429) {
         // クールダウン: モーダルを閉じてトーストで通知
         setIsTopicLoading(false)
         setShowTopicModal(false)
-        showToast(data.message || '時間をおいてトライしてください ⏳', 'warning')
+        show(data.message || '時間をおいてトライしてください ⏳', 'warning')
       } else if (response.status === 503) {
         // サービス一時利用不可
         setIsTopicLoading(false)
         setShowTopicModal(false)
-        showToast(data.message || 'サービスが一時的に利用できません。少し時間をおいてから再度お試しください。', 'warning')
+        show(data.message || 'サービスが一時的に利用できません。少し時間をおいてから再度お試しください。', 'warning')
       } else if (response.status === 500 && data.error === 'generation_failed') {
         // 生成失敗
         setIsTopicLoading(false)
         setShowTopicModal(false)
-        showToast(data.message || '話題の生成に失敗しました。もう一度QRコードを読み取ってください。', 'warning')
+        show(data.message || '話題の生成に失敗しました。もう一度QRコードを読み取ってください。', 'warning')
       } else if (response.status === 401) {
         setIsTopicLoading(false)
         setShowTopicModal(false)
@@ -104,22 +84,22 @@ function HomeContent() {
       } else if (response.status === 400 && data.error === 'self_scan') {
         setIsTopicLoading(false)
         setShowTopicModal(false)
-        showToast('自分のQRコードはスキャンできません', 'warning')
+        show('自分のQRコードはスキャンできません', 'warning')
       } else if (response.status === 404) {
         setIsTopicLoading(false)
         setShowTopicModal(false)
-        showToast('ユーザーが見つかりませんでした', 'error')
+        show('ユーザーが見つかりませんでした', 'error')
       } else {
         setIsTopicLoading(false)
         setShowTopicModal(false)
-        showToast('スキャンに失敗しました', 'error')
+        show('スキャンに失敗しました', 'error')
       }
     } catch (error) {
       setIsTopicLoading(false)
       setShowTopicModal(false)
-      showToast('ネットワークエラーが発生しました', 'error')
+      show('ネットワークエラーが発生しました', 'error')
     }
-  }, [router])
+  }, [router, show])
 
   // URL経由のスキャン処理
   useEffect(() => {
@@ -140,19 +120,12 @@ function HomeContent() {
       })
       router.push('/')
     } catch (error) {
-      showToast('ログアウトに失敗しました', 'error')
+      show('ログアウトに失敗しました', 'error')
     }
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
-          <p className="text-white font-medium">読み込み中...</p>
-        </div>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   return (
@@ -244,27 +217,13 @@ function HomeContent() {
         }}
       />
 
-      {/* トースト */}
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isVisible={toast.isVisible}
-        onClose={hideToast}
-      />
     </div>
   )
 }
 
 export default function HomePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
-          <p className="text-white font-medium">読み込み中...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<LoadingScreen />}>
       <HomeContent />
     </Suspense>
   )

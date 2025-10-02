@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Navigation from '@/components/Navigation'
-import Toast from '@/components/Toast'
 import { RefreshCw, QrCode, Users, Trophy, Sparkles, TrendingUp } from 'lucide-react'
+import { LoadingScreen } from '@/components/LoadingScreen'
+import { useToast } from '@/hooks/useToast'
+import { useApi } from '@/hooks/useApi'
 
 interface MetricsData {
   scanOut: number
@@ -14,12 +16,10 @@ interface MetricsData {
 export default function MetricsPage() {
   const [metrics, setMetrics] = useState<MetricsData>({ scanOut: 0, scanIn: 0 })
   const [isLoading, setIsLoading] = useState(true)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; isVisible: boolean }>({
-    message: '',
-    type: 'success',
-    isVisible: false
-  })
+
   const router = useRouter()
+  const { show } = useToast()
+  const { json } = useApi()
 
   useEffect(() => {
     fetchMetrics()
@@ -27,45 +27,19 @@ export default function MetricsPage() {
 
   const fetchMetrics = async () => {
     try {
-      const response = await fetch('/api/metrics/me', {
-        credentials: 'include', // Added for better cookie handling
-      })
-
-      if (response.status === 401) {
-        router.push('/auth/login')
-        return
+      const data = await json<MetricsData>('/api/metrics/me')
+      setMetrics(data)
+    } catch (error: any) {
+      if (error.status !== 401) {
+        show('実績の取得に失敗しました', 'error')
       }
-
-      if (response.ok) {
-        const data = await response.json()
-        setMetrics(data)
-      } else {
-        showToast('実績の取得に失敗しました', 'error')
-      }
-    } catch (error) {
-      showToast('ネットワークエラーが発生しました', 'error')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
-    setToast({ message, type, isVisible: true })
-  }
-
-  const hideToast = () => {
-    setToast(prev => ({ ...prev, isVisible: false }))
-  }
-
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
-          <p className="text-white font-medium">読み込み中...</p>
-        </div>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   // アニメーション用のカウントアップ効果
@@ -244,14 +218,6 @@ export default function MetricsPage() {
 
         {/* ナビゲーション */}
         <Navigation />
-
-        {/* トースト */}
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          isVisible={toast.isVisible}
-          onClose={hideToast}
-        />
       </div>
     </div>
   )

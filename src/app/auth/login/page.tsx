@@ -4,20 +4,23 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { LogIn, User, Lock, ArrowLeft } from 'lucide-react'
+import { PageShell } from '@/components/PageShell'
+import { LoadingScreen } from '@/components/LoadingScreen'
+import { useToast } from '@/hooks/useToast'
 
 function LoginForm() {
   const [userId, setUserId] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
+
   const router = useRouter()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get('next') || '/home'
+  const { show } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setError('')
 
     try {
       const response = await fetch('/api/auth/login', {
@@ -35,10 +38,10 @@ function LoginForm() {
         // Use window.location for full page reload to ensure cookies are sent
         window.location.assign(nextPath)
       } else {
-        setError(data.error === 'invalid_credentials' ? 'ユーザーIDまたはパスワードが正しくありません' : 'ログインに失敗しました')
+        show(data.error === 'invalid_credentials' ? 'ユーザーIDまたはパスワードが正しくありません' : 'ログインに失敗しました', 'error')
       }
     } catch (error) {
-      setError('ネットワークエラーが発生しました')
+      show('ネットワークエラーが発生しました', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -122,12 +125,6 @@ function LoginForm() {
               </div>
             </div>
 
-            {/* エラーメッセージ */}
-            {error && (
-              <div className="backdrop-blur-lg bg-red-500/10 border border-red-200 text-red-700 text-sm text-center p-3 rounded-xl">
-                {error}
-              </div>
-            )}
 
             {/* ログインボタン */}
             <button
@@ -184,14 +181,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-teal-500 to-blue-600">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
-          <p className="text-white font-medium">読み込み中...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<LoadingScreen />}>
       <LoginForm />
     </Suspense>
   )
