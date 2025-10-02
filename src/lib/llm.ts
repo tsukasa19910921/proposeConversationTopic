@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { env } from "@/lib/env";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
+const genAI = new GoogleGenerativeAI(env.GOOGLE_GEMINI_API_KEY || "dummy-key-for-development");
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
 // プロフィールを確認（Packed形式のみ対応）
@@ -75,7 +76,7 @@ export async function generateTopic(profileA: any, profileB: any): Promise<strin
     console.log("=== LLM Debug ===");
     console.log("Simplified Profile A:", JSON.stringify(simplifiedA, null, 2));
     console.log("Simplified Profile B:", JSON.stringify(simplifiedB, null, 2));
-    console.log("API Key exists:", !!process.env.GOOGLE_GEMINI_API_KEY);
+    console.log("API Key exists:", !!env.GOOGLE_GEMINI_API_KEY);
 
     // システムプロンプトの設定
     const systemPrompt = `あなたは高校生の初対面会話を支援するアシスタントです。

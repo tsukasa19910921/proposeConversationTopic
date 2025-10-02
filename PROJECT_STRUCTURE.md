@@ -20,25 +20,97 @@ QRコードを通じて相手と繋がり、AI（Google Gemini）が共通点を
 
 ```
 proposeConversationTopic/
-├── 📂 src/                    # ソースコード本体
-│   ├── 📂 app/                # Next.js App Router（ページとAPI）
-│   │   ├── 📂 api/           # APIエンドポイント
-│   │   ├── 📂 auth/          # 認証関連ページ
-│   │   ├── 📂 home/          # ホーム画面
-│   │   ├── 📂 profile/       # プロフィール画面
-│   │   ├── 📂 metrics/       # 実績画面
-│   │   ├── 📂 scan/          # QRスキャン画面
-│   │   └── layout.tsx        # 共通レイアウト
-│   │
-│   ├── 📂 components/         # 再利用可能なUIコンポーネント
-│   │
-│   └── 📂 lib/               # ビジネスロジック・ユーティリティ
-│       └── 📂 repos/         # データベース操作層
+├── 📂 .claude/                # Claude Code設定
+│   └── settings.local.json    # ローカル設定
+│
+├── 📂 .vscode/                # VS Code設定
+│   └── settings.json
 │
 ├── 📂 prisma/                 # データベース定義
-├── 📂 public/                 # 静的ファイル
-├── 📄 .env                    # 環境変数
-└── 📄 各種設定ファイル        # package.json, tsconfig.json等
+│   └── schema.prisma         # Prismaスキーマ
+│
+├── 📂 src/                    # ソースコード本体
+│   ├── 📂 app/               # Next.js App Router（ページとAPI）
+│   │   ├── 📂 api/          # APIエンドポイント
+│   │   │   ├── 📂 auth/     # 認証API
+│   │   │   │   ├── login/route.ts
+│   │   │   │   ├── logout/route.ts
+│   │   │   │   └── signup/route.ts
+│   │   │   ├── 📂 me/       # ユーザー情報API
+│   │   │   │   └── route.ts
+│   │   │   ├── 📂 metrics/  # 実績API
+│   │   │   │   └── me/route.ts
+│   │   │   ├── 📂 profile/  # プロフィールAPI
+│   │   │   │   └── me/route.ts
+│   │   │   ├── 📂 qr/       # QRコードAPI
+│   │   │   │   └── me/route.ts
+│   │   │   └── 📂 scan/     # スキャンAPI
+│   │   │       └── route.ts
+│   │   │
+│   │   ├── 📂 auth/          # 認証関連ページ
+│   │   │   ├── login/page.tsx
+│   │   │   └── signup/page.tsx
+│   │   │
+│   │   ├── 📂 home/          # ホーム画面
+│   │   │   └── page.tsx
+│   │   │
+│   │   ├── 📂 metrics/       # 実績画面
+│   │   │   └── page.tsx
+│   │   │
+│   │   ├── 📂 profile/       # プロフィール画面
+│   │   │   └── page.tsx
+│   │   │
+│   │   ├── 📂 scan/          # QRスキャン画面
+│   │   │   └── page.tsx
+│   │   │
+│   │   ├── globals.css       # グローバルスタイル
+│   │   ├── layout.tsx        # 共通レイアウト
+│   │   ├── not-found.tsx     # 404ページ
+│   │   └── page.tsx          # トップページ
+│   │
+│   ├── 📂 components/         # 再利用可能なUIコンポーネント
+│   │   ├── CameraScanner.tsx # QRカメラスキャナー
+│   │   ├── ClientAnalytics.tsx # クライアント側GA
+│   │   ├── GoogleAnalytics.tsx # サーバー側GA
+│   │   ├── Navigation.tsx    # 3タブナビゲーション
+│   │   ├── Toast.tsx         # トースト通知
+│   │   └── TopicModal.tsx    # 話題表示モーダル
+│   │
+│   └── 📂 lib/               # ビジネスロジック・ユーティリティ
+│       ├── 📂 repos/         # データベース操作層
+│       │   ├── counters.ts   # カウンター管理
+│       │   ├── profile.ts    # プロフィール管理
+│       │   └── users.ts      # ユーザー管理
+│       │
+│       ├── cooldown.ts       # クールダウン制御
+│       ├── db.ts             # Prismaクライアント
+│       ├── llm.ts            # Gemini AI連携
+│       ├── profile-shape.ts  # プロフィール型定義
+│       ├── qr.ts             # QRコード生成
+│       ├── session.ts        # セッション管理
+│       └── topics.ts         # トピック定義
+│
+├── 📄 設定ファイル群
+│   ├── .env                  # 環境変数（Git除外）
+│   ├── .env.local.example    # 環境変数サンプル
+│   ├── .gitignore
+│   ├── next.config.js        # Next.js設定
+│   ├── next-env.d.ts         # TypeScript環境定義
+│   ├── package.json          # 依存関係
+│   ├── package-lock.json
+│   ├── postcss.config.js     # PostCSS設定
+│   ├── tailwind.config.js    # Tailwind設定
+│   ├── tsconfig.json         # TypeScript設定
+│   └── tsconfig.tsbuildinfo  # TSビルド情報
+│
+├── 📄 ドキュメント
+│   ├── CLAUDE.md             # Claude Code実装ガイド
+│   ├── DEPLOYMENT_FIX.md     # デプロイ修正記録
+│   ├── PROJECT_STRUCTURE.md  # 本ファイル
+│   └── UI_IMPROVEMENT_TODO.md # UI改善タスク
+│
+└── 📄 その他
+    └── repomix-output.xml    # コード解析結果
 ```
 
 ---
@@ -54,6 +126,7 @@ proposeConversationTopic/
 | `page.tsx` | トップページ（ホームへリダイレクト） | `/` |
 | `not-found.tsx` | 404エラーページ | 存在しないURL |
 | `layout.tsx` | 全ページ共通のレイアウト<br>- Google Analytics設定<br>- 基本的なスタイル適用 | - |
+| `globals.css` | グローバルCSS<br>- カラーパレット定義<br>- ガラスモーフィズム<br>- ネオン効果<br>- QRコードSVGスタイル | - |
 
 #### **認証関連（`/auth/`）**
 
@@ -66,7 +139,7 @@ proposeConversationTopic/
 
 | ファイル | 機能説明 | 主な要素 |
 |---------|---------|----------|
-| `home/page.tsx` | ホーム画面（メイン） | ・自分のQRコード大きく表示<br>・「相手のQRを読み取る」ボタン<br>・話題モーダル表示 |
+| `home/page.tsx` | ホーム画面（メイン） | ・自分のQRコード大きく表示<br>・「相手のQRを読み取る」ボタン<br>・話題モーダル表示<br>・QRカードのデザイン改善済み |
 | `profile/page.tsx` | プロフィール編集 | ・趣味・興味をチェックボックスで選択<br>・詳細テキスト入力<br>・保存ボタン |
 | `metrics/page.tsx` | 実績表示 | ・読み取った回数（scanOut）<br>・読み取られた回数（scanIn） |
 | `scan/page.tsx` | QRスキャン画面 | ・カメラでQR読み取り<br>・URLパラメータ経由でも処理可能 |
@@ -102,14 +175,14 @@ proposeConversationTopic/
 
 ### 3️⃣ `/src/components/` - UIコンポーネント
 
-| コンポーネント | 役割 | 使用場所 |
-|--------------|------|----------|
-| `Navigation.tsx` | 3タブナビゲーション<br>（ホーム/プロフィール/実績） | 各メイン画面 |
-| `TopicModal.tsx` | 話題表示モーダル<br>・ローディング表示<br>・話題テキスト表示 | ホーム画面 |
-| `Toast.tsx` | 通知トースト表示<br>（エラー・成功メッセージ） | 全画面 |
-| `CameraScanner.tsx` | QRカメラスキャナー<br>・カメラ起動<br>・QR検出 | スキャン画面 |
-| `GoogleAnalytics.tsx` | Google Analytics設定<br>（サーバーコンポーネント） | layout.tsx |
-| `ClientAnalytics.tsx` | SPA遷移トラッキング<br>（クライアントコンポーネント） | layout.tsx |
+| コンポーネント | 役割 | 使用場所 | 最近の変更 |
+|--------------|------|----------|------------|
+| `Navigation.tsx` | 3タブナビゲーション<br>（ホーム/プロフィール/実績） | 各メイン画面 | - |
+| `TopicModal.tsx` | 話題表示モーダル<br>・ローディング表示<br>・話題テキスト表示 | ホーム画面 | ローディング状態追加 |
+| `Toast.tsx` | 通知トースト表示<br>（エラー・成功メッセージ） | 全画面 | - |
+| `CameraScanner.tsx` | QRカメラスキャナー<br>・カメラ起動<br>・QR検出 | スキャン画面 | モバイル対応改善 |
+| `GoogleAnalytics.tsx` | Google Analytics設定<br>（サーバーコンポーネント） | layout.tsx | - |
+| `ClientAnalytics.tsx` | SPA遷移トラッキング<br>（クライアントコンポーネント） | layout.tsx | - |
 
 ---
 
@@ -117,13 +190,13 @@ proposeConversationTopic/
 
 #### **コア機能**
 
-| ファイル | 機能 | 主要な関数/処理 |
-|---------|------|----------------|
-| `session.ts` | 認証セッション管理 | ・`issueTicket()`: Cookie発行<br>・`requireSession()`: 認証確認 |
-| `llm.ts` | AI話題生成 | ・Gemini API連携<br>・プロンプト生成<br>・フォールバック処理 |
-| `qr.ts` | QRコード生成 | SVG形式のQRコード作成 |
-| `cooldown.ts` | クールダウン制御 | 30秒間の重複スキャン防止 |
-| `db.ts` | データベース接続 | Prisma Client初期化 |
+| ファイル | 機能 | 主要な関数/処理 | 最近の変更 |
+|---------|------|----------------|------------|
+| `session.ts` | 認証セッション管理 | ・`issueTicket()`: Cookie発行<br>・`requireSession()`: 認証確認 | - |
+| `llm.ts` | AI話題生成 | ・Gemini API連携<br>・プロンプト生成<br>・フォールバック処理 | データサイズ最適化 |
+| `qr.ts` | QRコード生成 | SVG形式のQRコード作成 | margin: 2に調整（美観改善） |
+| `cooldown.ts` | クールダウン制御 | 30秒間の重複スキャン防止 | - |
+| `db.ts` | データベース接続 | Prisma Client初期化 | - |
 
 #### **データ定義**
 
@@ -137,7 +210,7 @@ proposeConversationTopic/
 | ファイル | 対象テーブル | 主要メソッド |
 |---------|------------|-------------|
 | `users.ts` | User | ・`createUser()`: ユーザー作成<br>・`verifyPassword()`: パスワード確認 |
-| `profile.ts` | Profile | ・`getProfile()`: 取得<br>・`saveProfile()`: 保存 |
+| `profile.ts` | Profile | ・`getProfile()`: 取得<br>・`saveProfile()`: 保存（String型でJSON保存） |
 | `counters.ts` | Counters | ・`incrScanOutIn()`: カウント増加<br>・`getCounters()`: 取得 |
 
 ---
@@ -157,7 +230,7 @@ User（ユーザー基本情報）
 
 Profile（プロフィール情報）
 ├── userId: 外部キー → User.id
-├── profileJson: JSON形式のプロフィールデータ
+├── profileJson: String型（JSON文字列として保存）
 └── updatedAt
 
 Counters（実績カウンター）
@@ -196,7 +269,7 @@ POST /api/scan
     ↓
 [profile.ts] 両者のプロフィール取得
     ↓
-[llm.ts] Gemini AIで話題生成
+[llm.ts] Gemini AIで話題生成（軽量化済み）
     ↓
 [counters.ts] カウンター更新
     ↓
@@ -252,7 +325,7 @@ GOOGLE_GEMINI_API_KEY=AIza...
 # アプリケーション
 APP_BASE_URL=https://your-app.vercel.app
 
-# アナリティクス
+# アナリティクス（オプション）
 NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 ```
 
@@ -266,15 +339,17 @@ NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 ## 📈 パフォーマンス最適化
 
 ### **実装済みの最適化**
-1. **プロフィールデータ軽量化**: 選択された項目のみLLMに送信
+1. **プロフィールデータ軽量化**: 選択された項目のみLLMに送信（約1/10サイズ削減）
 2. **エラーハンドリング**: Gemini API失敗時のフォールバック
 3. **クライアント側キャッシュ**: QRコードのSVGキャッシュ
 4. **サーバーコンポーネント活用**: 不要なクライアントJSを削減
+5. **QR表示最適化**: margin調整とSVG display:block化で美観改善
 
 ### **今後の改善ポイント**
 - Vercel KVでのクールダウン管理（現在はin-memory）
 - プロフィールデータのさらなる圧縮
 - リトライロジックの実装
+- Gemini APIのレート制限対策
 
 ---
 
@@ -284,11 +359,19 @@ NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 - **シンプル**: 高校生が直感的に使える
 - **モバイルファースト**: スマートフォン最適化
 - **レスポンシブ**: 各種画面サイズ対応
+- **ガラスモーフィズム**: 半透明デザイン
+- **ネオン効果**: 若者向けのビジュアル
 
 ### **ナビゲーション設計**
 - **3タブ構成**: ホーム・プロフィール・実績
 - **モーダル活用**: 話題表示は画面遷移なし
 - **トースト通知**: エラーを控えめに表示
+
+### **最近のUI改善**
+- QRコードの表示サイズ拡大（260px/300px）
+- QRコード内側の均等な白縁（margin: 2）
+- 外側カードの正方形化（aspect-square）
+- SVGインライン表示の修正
 
 ---
 
@@ -313,6 +396,16 @@ npm run build
 - **Gemini API 503エラー**: フォールバック処理で対応中
 - **ビルドエラー**: `useSearchParams()`はSuspenseバウンダリ必須
 - **Cookie問題**: SameSite属性の確認
+- **PostgreSQL型エラー**: Profile.profileJsonはString型で保存
+
+### **既知の問題**
+1. **Gemini API頻繁な503エラー**
+   - 現状: フォールバック処理実装済み
+   - 対策案: リトライロジック、別モデルへの切り替え
+
+2. **モバイルカメラ問題**
+   - 現状: react-qr-scanner実装済み
+   - 注意点: ストリームクリーンアップ必須
 
 ---
 
@@ -327,4 +420,4 @@ Next.js 14の最新機能を活用し、TypeScriptによる型安全性を保ち
 
 ---
 
-*最終更新: 2024年12月*
+*最終更新: 2025年10月*

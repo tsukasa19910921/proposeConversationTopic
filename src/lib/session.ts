@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import crypto from "crypto";
+import { env } from "@/lib/env";
 
 const NAME = "sid";
-const MAX_AGE = Number(process.env.SESSION_MAX_AGE_SECONDS || 86400);
-const SECRET = process.env.SESSION_SECRET!;
+const MAX_AGE = env.SESSION_MAX_AGE_SECONDS;
+const SECRET = env.SESSION_SECRET;
 
 export function issueTicket(userId: string) {
   const exp = Math.floor(Date.now() / 1000) + MAX_AGE;
@@ -16,7 +17,7 @@ export function setSessionCookie(resp: any, userId: string) {
   const ticket = issueTicket(userId);
   resp.cookies.set(NAME, ticket, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: env.NODE_ENV === "production",
     sameSite: "lax",  // Changed from "strict" to "lax" for mobile compatibility
     path: "/",
     maxAge: MAX_AGE,
@@ -26,7 +27,7 @@ export function setSessionCookie(resp: any, userId: string) {
 export function clearSessionCookie(resp: any) {
   resp.cookies.set(NAME, "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: env.NODE_ENV === "production",
     sameSite: "lax",  // Changed from "strict" to "lax" for consistency
     path: "/",
     maxAge: 0,

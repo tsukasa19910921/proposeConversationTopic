@@ -93,14 +93,6 @@ UI_IMPROVEMENT_TODO.md
 <files>
 This section contains the contents of the repository's files.
 
-<file path="next-env.d.ts">
-/// <reference types="next" />
-/// <reference types="next/image-types/global" />
-
-// NOTE: This file should not be edited
-// see https://nextjs.org/docs/app/building-your-application/configuring/typescript for more information.
-</file>
-
 <file path=".env.local.example">
 # Database Configuration
 DATABASE_URL=postgresql://...
@@ -211,6 +203,14 @@ curl -X POST https://your-app.vercel.app/api/auth/signup \
 - `/public/favicon.ico`を追加（任意）
 </file>
 
+<file path="next-env.d.ts">
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/building-your-application/configuring/typescript for more information.
+</file>
+
 <file path="postcss.config.js">
 module.exports = {
   plugins: {
@@ -243,25 +243,97 @@ QRコードを通じて相手と繋がり、AI（Google Gemini）が共通点を
 
 ```
 proposeConversationTopic/
-├── 📂 src/                    # ソースコード本体
-│   ├── 📂 app/                # Next.js App Router（ページとAPI）
-│   │   ├── 📂 api/           # APIエンドポイント
-│   │   ├── 📂 auth/          # 認証関連ページ
-│   │   ├── 📂 home/          # ホーム画面
-│   │   ├── 📂 profile/       # プロフィール画面
-│   │   ├── 📂 metrics/       # 実績画面
-│   │   ├── 📂 scan/          # QRスキャン画面
-│   │   └── layout.tsx        # 共通レイアウト
-│   │
-│   ├── 📂 components/         # 再利用可能なUIコンポーネント
-│   │
-│   └── 📂 lib/               # ビジネスロジック・ユーティリティ
-│       └── 📂 repos/         # データベース操作層
+├── 📂 .claude/                # Claude Code設定
+│   └── settings.local.json    # ローカル設定
+│
+├── 📂 .vscode/                # VS Code設定
+│   └── settings.json
 │
 ├── 📂 prisma/                 # データベース定義
-├── 📂 public/                 # 静的ファイル
-├── 📄 .env                    # 環境変数
-└── 📄 各種設定ファイル        # package.json, tsconfig.json等
+│   └── schema.prisma         # Prismaスキーマ
+│
+├── 📂 src/                    # ソースコード本体
+│   ├── 📂 app/               # Next.js App Router（ページとAPI）
+│   │   ├── 📂 api/          # APIエンドポイント
+│   │   │   ├── 📂 auth/     # 認証API
+│   │   │   │   ├── login/route.ts
+│   │   │   │   ├── logout/route.ts
+│   │   │   │   └── signup/route.ts
+│   │   │   ├── 📂 me/       # ユーザー情報API
+│   │   │   │   └── route.ts
+│   │   │   ├── 📂 metrics/  # 実績API
+│   │   │   │   └── me/route.ts
+│   │   │   ├── 📂 profile/  # プロフィールAPI
+│   │   │   │   └── me/route.ts
+│   │   │   ├── 📂 qr/       # QRコードAPI
+│   │   │   │   └── me/route.ts
+│   │   │   └── 📂 scan/     # スキャンAPI
+│   │   │       └── route.ts
+│   │   │
+│   │   ├── 📂 auth/          # 認証関連ページ
+│   │   │   ├── login/page.tsx
+│   │   │   └── signup/page.tsx
+│   │   │
+│   │   ├── 📂 home/          # ホーム画面
+│   │   │   └── page.tsx
+│   │   │
+│   │   ├── 📂 metrics/       # 実績画面
+│   │   │   └── page.tsx
+│   │   │
+│   │   ├── 📂 profile/       # プロフィール画面
+│   │   │   └── page.tsx
+│   │   │
+│   │   ├── 📂 scan/          # QRスキャン画面
+│   │   │   └── page.tsx
+│   │   │
+│   │   ├── globals.css       # グローバルスタイル
+│   │   ├── layout.tsx        # 共通レイアウト
+│   │   ├── not-found.tsx     # 404ページ
+│   │   └── page.tsx          # トップページ
+│   │
+│   ├── 📂 components/         # 再利用可能なUIコンポーネント
+│   │   ├── CameraScanner.tsx # QRカメラスキャナー
+│   │   ├── ClientAnalytics.tsx # クライアント側GA
+│   │   ├── GoogleAnalytics.tsx # サーバー側GA
+│   │   ├── Navigation.tsx    # 3タブナビゲーション
+│   │   ├── Toast.tsx         # トースト通知
+│   │   └── TopicModal.tsx    # 話題表示モーダル
+│   │
+│   └── 📂 lib/               # ビジネスロジック・ユーティリティ
+│       ├── 📂 repos/         # データベース操作層
+│       │   ├── counters.ts   # カウンター管理
+│       │   ├── profile.ts    # プロフィール管理
+│       │   └── users.ts      # ユーザー管理
+│       │
+│       ├── cooldown.ts       # クールダウン制御
+│       ├── db.ts             # Prismaクライアント
+│       ├── llm.ts            # Gemini AI連携
+│       ├── profile-shape.ts  # プロフィール型定義
+│       ├── qr.ts             # QRコード生成
+│       ├── session.ts        # セッション管理
+│       └── topics.ts         # トピック定義
+│
+├── 📄 設定ファイル群
+│   ├── .env                  # 環境変数（Git除外）
+│   ├── .env.local.example    # 環境変数サンプル
+│   ├── .gitignore
+│   ├── next.config.js        # Next.js設定
+│   ├── next-env.d.ts         # TypeScript環境定義
+│   ├── package.json          # 依存関係
+│   ├── package-lock.json
+│   ├── postcss.config.js     # PostCSS設定
+│   ├── tailwind.config.js    # Tailwind設定
+│   ├── tsconfig.json         # TypeScript設定
+│   └── tsconfig.tsbuildinfo  # TSビルド情報
+│
+├── 📄 ドキュメント
+│   ├── CLAUDE.md             # Claude Code実装ガイド
+│   ├── DEPLOYMENT_FIX.md     # デプロイ修正記録
+│   ├── PROJECT_STRUCTURE.md  # 本ファイル
+│   └── UI_IMPROVEMENT_TODO.md # UI改善タスク
+│
+└── 📄 その他
+    └── repomix-output.xml    # コード解析結果
 ```
 
 ---
@@ -277,6 +349,7 @@ proposeConversationTopic/
 | `page.tsx` | トップページ（ホームへリダイレクト） | `/` |
 | `not-found.tsx` | 404エラーページ | 存在しないURL |
 | `layout.tsx` | 全ページ共通のレイアウト<br>- Google Analytics設定<br>- 基本的なスタイル適用 | - |
+| `globals.css` | グローバルCSS<br>- カラーパレット定義<br>- ガラスモーフィズム<br>- ネオン効果<br>- QRコードSVGスタイル | - |
 
 #### **認証関連（`/auth/`）**
 
@@ -289,7 +362,7 @@ proposeConversationTopic/
 
 | ファイル | 機能説明 | 主な要素 |
 |---------|---------|----------|
-| `home/page.tsx` | ホーム画面（メイン） | ・自分のQRコード大きく表示<br>・「相手のQRを読み取る」ボタン<br>・話題モーダル表示 |
+| `home/page.tsx` | ホーム画面（メイン） | ・自分のQRコード大きく表示<br>・「相手のQRを読み取る」ボタン<br>・話題モーダル表示<br>・QRカードのデザイン改善済み |
 | `profile/page.tsx` | プロフィール編集 | ・趣味・興味をチェックボックスで選択<br>・詳細テキスト入力<br>・保存ボタン |
 | `metrics/page.tsx` | 実績表示 | ・読み取った回数（scanOut）<br>・読み取られた回数（scanIn） |
 | `scan/page.tsx` | QRスキャン画面 | ・カメラでQR読み取り<br>・URLパラメータ経由でも処理可能 |
@@ -325,14 +398,14 @@ proposeConversationTopic/
 
 ### 3️⃣ `/src/components/` - UIコンポーネント
 
-| コンポーネント | 役割 | 使用場所 |
-|--------------|------|----------|
-| `Navigation.tsx` | 3タブナビゲーション<br>（ホーム/プロフィール/実績） | 各メイン画面 |
-| `TopicModal.tsx` | 話題表示モーダル<br>・ローディング表示<br>・話題テキスト表示 | ホーム画面 |
-| `Toast.tsx` | 通知トースト表示<br>（エラー・成功メッセージ） | 全画面 |
-| `CameraScanner.tsx` | QRカメラスキャナー<br>・カメラ起動<br>・QR検出 | スキャン画面 |
-| `GoogleAnalytics.tsx` | Google Analytics設定<br>（サーバーコンポーネント） | layout.tsx |
-| `ClientAnalytics.tsx` | SPA遷移トラッキング<br>（クライアントコンポーネント） | layout.tsx |
+| コンポーネント | 役割 | 使用場所 | 最近の変更 |
+|--------------|------|----------|------------|
+| `Navigation.tsx` | 3タブナビゲーション<br>（ホーム/プロフィール/実績） | 各メイン画面 | - |
+| `TopicModal.tsx` | 話題表示モーダル<br>・ローディング表示<br>・話題テキスト表示 | ホーム画面 | ローディング状態追加 |
+| `Toast.tsx` | 通知トースト表示<br>（エラー・成功メッセージ） | 全画面 | - |
+| `CameraScanner.tsx` | QRカメラスキャナー<br>・カメラ起動<br>・QR検出 | スキャン画面 | モバイル対応改善 |
+| `GoogleAnalytics.tsx` | Google Analytics設定<br>（サーバーコンポーネント） | layout.tsx | - |
+| `ClientAnalytics.tsx` | SPA遷移トラッキング<br>（クライアントコンポーネント） | layout.tsx | - |
 
 ---
 
@@ -340,13 +413,13 @@ proposeConversationTopic/
 
 #### **コア機能**
 
-| ファイル | 機能 | 主要な関数/処理 |
-|---------|------|----------------|
-| `session.ts` | 認証セッション管理 | ・`issueTicket()`: Cookie発行<br>・`requireSession()`: 認証確認 |
-| `llm.ts` | AI話題生成 | ・Gemini API連携<br>・プロンプト生成<br>・フォールバック処理 |
-| `qr.ts` | QRコード生成 | SVG形式のQRコード作成 |
-| `cooldown.ts` | クールダウン制御 | 30秒間の重複スキャン防止 |
-| `db.ts` | データベース接続 | Prisma Client初期化 |
+| ファイル | 機能 | 主要な関数/処理 | 最近の変更 |
+|---------|------|----------------|------------|
+| `session.ts` | 認証セッション管理 | ・`issueTicket()`: Cookie発行<br>・`requireSession()`: 認証確認 | - |
+| `llm.ts` | AI話題生成 | ・Gemini API連携<br>・プロンプト生成<br>・フォールバック処理 | データサイズ最適化 |
+| `qr.ts` | QRコード生成 | SVG形式のQRコード作成 | margin: 2に調整（美観改善） |
+| `cooldown.ts` | クールダウン制御 | 30秒間の重複スキャン防止 | - |
+| `db.ts` | データベース接続 | Prisma Client初期化 | - |
 
 #### **データ定義**
 
@@ -360,7 +433,7 @@ proposeConversationTopic/
 | ファイル | 対象テーブル | 主要メソッド |
 |---------|------------|-------------|
 | `users.ts` | User | ・`createUser()`: ユーザー作成<br>・`verifyPassword()`: パスワード確認 |
-| `profile.ts` | Profile | ・`getProfile()`: 取得<br>・`saveProfile()`: 保存 |
+| `profile.ts` | Profile | ・`getProfile()`: 取得<br>・`saveProfile()`: 保存（String型でJSON保存） |
 | `counters.ts` | Counters | ・`incrScanOutIn()`: カウント増加<br>・`getCounters()`: 取得 |
 
 ---
@@ -380,7 +453,7 @@ User（ユーザー基本情報）
 
 Profile（プロフィール情報）
 ├── userId: 外部キー → User.id
-├── profileJson: JSON形式のプロフィールデータ
+├── profileJson: String型（JSON文字列として保存）
 └── updatedAt
 
 Counters（実績カウンター）
@@ -419,7 +492,7 @@ POST /api/scan
     ↓
 [profile.ts] 両者のプロフィール取得
     ↓
-[llm.ts] Gemini AIで話題生成
+[llm.ts] Gemini AIで話題生成（軽量化済み）
     ↓
 [counters.ts] カウンター更新
     ↓
@@ -475,7 +548,7 @@ GOOGLE_GEMINI_API_KEY=AIza...
 # アプリケーション
 APP_BASE_URL=https://your-app.vercel.app
 
-# アナリティクス
+# アナリティクス（オプション）
 NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 ```
 
@@ -489,15 +562,17 @@ NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 ## 📈 パフォーマンス最適化
 
 ### **実装済みの最適化**
-1. **プロフィールデータ軽量化**: 選択された項目のみLLMに送信
+1. **プロフィールデータ軽量化**: 選択された項目のみLLMに送信（約1/10サイズ削減）
 2. **エラーハンドリング**: Gemini API失敗時のフォールバック
 3. **クライアント側キャッシュ**: QRコードのSVGキャッシュ
 4. **サーバーコンポーネント活用**: 不要なクライアントJSを削減
+5. **QR表示最適化**: margin調整とSVG display:block化で美観改善
 
 ### **今後の改善ポイント**
 - Vercel KVでのクールダウン管理（現在はin-memory）
 - プロフィールデータのさらなる圧縮
 - リトライロジックの実装
+- Gemini APIのレート制限対策
 
 ---
 
@@ -507,11 +582,19 @@ NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 - **シンプル**: 高校生が直感的に使える
 - **モバイルファースト**: スマートフォン最適化
 - **レスポンシブ**: 各種画面サイズ対応
+- **ガラスモーフィズム**: 半透明デザイン
+- **ネオン効果**: 若者向けのビジュアル
 
 ### **ナビゲーション設計**
 - **3タブ構成**: ホーム・プロフィール・実績
 - **モーダル活用**: 話題表示は画面遷移なし
 - **トースト通知**: エラーを控えめに表示
+
+### **最近のUI改善**
+- QRコードの表示サイズ拡大（260px/300px）
+- QRコード内側の均等な白縁（margin: 2）
+- 外側カードの正方形化（aspect-square）
+- SVGインライン表示の修正
 
 ---
 
@@ -536,6 +619,16 @@ npm run build
 - **Gemini API 503エラー**: フォールバック処理で対応中
 - **ビルドエラー**: `useSearchParams()`はSuspenseバウンダリ必須
 - **Cookie問題**: SameSite属性の確認
+- **PostgreSQL型エラー**: Profile.profileJsonはString型で保存
+
+### **既知の問題**
+1. **Gemini API頻繁な503エラー**
+   - 現状: フォールバック処理実装済み
+   - 対策案: リトライロジック、別モデルへの切り替え
+
+2. **モバイルカメラ問題**
+   - 現状: react-qr-scanner実装済み
+   - 注意点: ストリームクリーンアップ必須
 
 ---
 
@@ -550,7 +643,7 @@ Next.js 14の最新機能を活用し、TypeScriptによる型安全性を保ち
 
 ---
 
-*最終更新: 2024年12月*
+*最終更新: 2025年10月*
 </file>
 
 <file path="src/app/api/me/route.ts">
@@ -753,24 +846,6 @@ export function expandProfileForUI(input: any): UIProfile {
   }
 
   return ui;
-}
-</file>
-
-<file path="src/lib/qr.ts">
-import QRCode from "qrcode";
-
-export async function generateQR(url: string): Promise<string> {
-  try {
-    const svg = await QRCode.toString(url, {
-      type: "svg",
-      errorCorrectionLevel: "M",
-      margin: 0,
-    });
-    return svg;
-  } catch (error) {
-    console.error("QR generation error:", error);
-    throw new Error("Failed to generate QR code");
-  }
 }
 </file>
 
@@ -1173,43 +1248,6 @@ export const TOPICS = {
 }
 </file>
 
-<file path=".gitignore">
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
-.env*.local
-.env
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.tsrepomix-output.xml
-</file>
-
 <file path="next.config.js">
 /** @type {import('next').NextConfig} */
 const nextConfig = {};
@@ -1516,6 +1554,24 @@ setInterval(() => {
 }, WINDOW);
 </file>
 
+<file path="src/lib/qr.ts">
+import QRCode from "qrcode";
+
+export async function generateQR(url: string): Promise<string> {
+  try {
+    const svg = await QRCode.toString(url, {
+      type: "svg",
+      errorCorrectionLevel: "M",
+      margin: 2,  // QR内側に均等な白縁を確保
+    });
+    return svg;
+  } catch (error) {
+    console.error("QR generation error:", error);
+    throw new Error("Failed to generate QR code");
+  }
+}
+</file>
+
 <file path="src/lib/session.ts">
 import { cookies } from "next/headers";
 import crypto from "crypto";
@@ -1639,6 +1695,43 @@ module.exports = {
   },
   plugins: [],
 };
+</file>
+
+<file path=".gitignore">
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+.env
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.tsrepomix-output.xml
 </file>
 
 <file path="CLAUDE.md">
@@ -3525,245 +3618,6 @@ export default function SignupPage() {
 }
 </file>
 
-<file path="src/app/globals.css">
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* ===== カラーパレット定義 ===== */
-:root {
-  /* メインカラー */
-  --color-teal: #28C7FA;
-  --color-violet: #9B5DE5;
-
-  /* アクセントカラー */
-  --color-neon-yellow: #FEE440;
-  --color-pink: #F15BB5;
-  --color-light-blue: #00BBF9;
-
-  /* グラデーション */
-  --gradient-main: linear-gradient(135deg, var(--color-teal) 0%, var(--color-violet) 100%);
-  --gradient-pop: linear-gradient(135deg, var(--color-pink) 0%, var(--color-neon-yellow) 100%);
-  --gradient-cool: linear-gradient(135deg, var(--color-light-blue) 0%, var(--color-teal) 100%);
-
-  /* ガラスモーフィズム用 */
-  --glass-bg: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.18);
-  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-
-  /* ネオン効果 */
-  --neon-glow-teal: 0 0 30px rgba(40, 199, 250, 0.8), 0 0 60px rgba(40, 199, 250, 0.4);
-  --neon-glow-violet: 0 0 30px rgba(155, 93, 229, 0.8), 0 0 60px rgba(155, 93, 229, 0.4);
-  --neon-glow-pink: 0 0 30px rgba(241, 91, 181, 0.8), 0 0 60px rgba(241, 91, 181, 0.4);
-}
-
-/* ===== グローバルスタイル ===== */
-body {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh;
-  font-family: var(--font-noto-sans-jp), var(--font-poppins), system-ui, -apple-system, sans-serif;
-}
-
-/* ===== ユーティリティクラス ===== */
-/* ガラスモーフィズム */
-.glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px) saturate(200%);
-  -webkit-backdrop-filter: blur(10px) saturate(200%);
-  background-image: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow:
-    0 8px 32px 0 rgba(31, 38, 135, 0.37),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
-}
-
-/* ネオンカード専用 */
-.neon-card {
-  position: relative;
-  background: linear-gradient(135deg, rgba(40, 199, 250, 0.1) 0%, rgba(155, 93, 229, 0.1) 100%);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.neon-card::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  background: linear-gradient(135deg, var(--color-teal), var(--color-violet));
-  border-radius: 24px;
-  z-index: -1;
-  opacity: 0.7;
-  filter: blur(10px);
-  animation: pulse 3s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.02); }
-}
-
-/* ネオンテキスト */
-.text-neon-teal {
-  color: var(--color-teal);
-  text-shadow: var(--neon-glow-teal);
-}
-
-.text-neon-violet {
-  color: var(--color-violet);
-  text-shadow: var(--neon-glow-violet);
-}
-
-.text-neon-pink {
-  color: var(--color-pink);
-  text-shadow: var(--neon-glow-pink);
-}
-
-/* グラデーションテキスト */
-.text-gradient-main {
-  background: var(--gradient-main);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.text-gradient-pop {
-  background: var(--gradient-pop);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* ボタンベーススタイル */
-.btn-gradient {
-  background: var(--gradient-main);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-gradient:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(40, 199, 250, 0.3);
-}
-
-.btn-gradient::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
-}
-
-.btn-gradient:hover::before {
-  left: 100%;
-}
-
-/* ===== アニメーション ===== */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-slideUp {
-  animation: slideUp 0.3s ease-out;
-}
-
-.animate-slideDown {
-  animation: slideDown 0.3s ease-out;
-}
-
-.animate-slideInUp {
-  animation: slideInUp 0.4s ease-out;
-}
-
-.animation-delay-200 {
-  animation-delay: 200ms;
-}
-
-/* QR Scanner Animation */
-@keyframes scan {
-  0% {
-    top: 0;
-  }
-  50% {
-    top: calc(100% - 4px);
-  }
-  100% {
-    top: 0;
-  }
-}
-
-.animate-scan {
-  animation: scan 2s ease-in-out infinite;
-}
-
-/* Toast Progress Bar Animation */
-@keyframes shrink {
-  from {
-    transform: scaleX(1);
-  }
-  to {
-    transform: scaleX(0);
-  }
-}
-
-/* QR Code SVG styles */
-.qr-container svg {
-  width: 100% !important;
-  height: 100% !important;
-  max-width: 100%;
-  max-height: 100%;
-}
-</file>
-
 <file path="src/app/metrics/page.tsx">
 'use client'
 
@@ -4216,6 +4070,246 @@ export default function ScanLandingPage() {
       <ScanContent />
     </Suspense>
   )
+}
+</file>
+
+<file path="src/app/globals.css">
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== カラーパレット定義 ===== */
+:root {
+  /* メインカラー */
+  --color-teal: #28C7FA;
+  --color-violet: #9B5DE5;
+
+  /* アクセントカラー */
+  --color-neon-yellow: #FEE440;
+  --color-pink: #F15BB5;
+  --color-light-blue: #00BBF9;
+
+  /* グラデーション */
+  --gradient-main: linear-gradient(135deg, var(--color-teal) 0%, var(--color-violet) 100%);
+  --gradient-pop: linear-gradient(135deg, var(--color-pink) 0%, var(--color-neon-yellow) 100%);
+  --gradient-cool: linear-gradient(135deg, var(--color-light-blue) 0%, var(--color-teal) 100%);
+
+  /* ガラスモーフィズム用 */
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+
+  /* ネオン効果 */
+  --neon-glow-teal: 0 0 30px rgba(40, 199, 250, 0.8), 0 0 60px rgba(40, 199, 250, 0.4);
+  --neon-glow-violet: 0 0 30px rgba(155, 93, 229, 0.8), 0 0 60px rgba(155, 93, 229, 0.4);
+  --neon-glow-pink: 0 0 30px rgba(241, 91, 181, 0.8), 0 0 60px rgba(241, 91, 181, 0.4);
+}
+
+/* ===== グローバルスタイル ===== */
+body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  font-family: var(--font-noto-sans-jp), var(--font-poppins), system-ui, -apple-system, sans-serif;
+}
+
+/* ===== ユーティリティクラス ===== */
+/* ガラスモーフィズム */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px) saturate(200%);
+  -webkit-backdrop-filter: blur(10px) saturate(200%);
+  background-image: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 8px 32px 0 rgba(31, 38, 135, 0.37),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* ネオンカード専用 */
+.neon-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(40, 199, 250, 0.1) 0%, rgba(155, 93, 229, 0.1) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.neon-card::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(135deg, var(--color-teal), var(--color-violet));
+  border-radius: 24px;
+  z-index: -1;
+  opacity: 0.7;
+  filter: blur(10px);
+  animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.02); }
+}
+
+/* ネオンテキスト */
+.text-neon-teal {
+  color: var(--color-teal);
+  text-shadow: var(--neon-glow-teal);
+}
+
+.text-neon-violet {
+  color: var(--color-violet);
+  text-shadow: var(--neon-glow-violet);
+}
+
+.text-neon-pink {
+  color: var(--color-pink);
+  text-shadow: var(--neon-glow-pink);
+}
+
+/* グラデーションテキスト */
+.text-gradient-main {
+  background: var(--gradient-main);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-pop {
+  background: var(--gradient-pop);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ボタンベーススタイル */
+.btn-gradient {
+  background: var(--gradient-main);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-gradient:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(40, 199, 250, 0.3);
+}
+
+.btn-gradient::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-gradient:hover::before {
+  left: 100%;
+}
+
+/* ===== アニメーション ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out;
+}
+
+.animate-slideInUp {
+  animation: slideInUp 0.4s ease-out;
+}
+
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+/* QR Scanner Animation */
+@keyframes scan {
+  0% {
+    top: 0;
+  }
+  50% {
+    top: calc(100% - 4px);
+  }
+  100% {
+    top: 0;
+  }
+}
+
+.animate-scan {
+  animation: scan 2s ease-in-out infinite;
+}
+
+/* Toast Progress Bar Animation */
+@keyframes shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* QR Code SVG styles */
+.qr-container svg {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+  display: block; /* インライン表示による下端余白を解消 */
 }
 </file>
 
@@ -4940,9 +5034,9 @@ function HomeContent() {
           </div>
 
           {qrData ? (
-            <div className="bg-white rounded-lg p-3 shadow-inner flex items-center justify-center">
+            <div className="bg-white rounded-lg p-2 sm:p-3 shadow-inner flex items-center justify-center aspect-square">
               <div
-                className="qr-container w-full max-w-[200px] sm:max-w-[240px] aspect-square"
+                className="qr-container w-full max-w-[260px] sm:max-w-[300px] aspect-square"
                 dangerouslySetInnerHTML={{ __html: qrData.svg }}
                 style={{
                   display: 'block'
