@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "QRプロフィール - 会話のきっかけを提案",
-    short_name: "QRプロフィール",
-    description: "QRコードで繋がり、AIが共通点から会話の話題を提案する高校生向けアプリ",
+    name: "Qtto. - QRコードでキュットつながる",
+    short_name: "Qtto.",
+    description: "QRコードでキュットつながる。AIが共通点から会話の話題を提案するアプリ",
     start_url: "/",
     display: "standalone",
     background_color: "#0f172a",

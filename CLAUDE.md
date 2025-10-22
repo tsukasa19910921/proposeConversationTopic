@@ -1,6 +1,7 @@
-# CLAUDE.md — POC「高校生向けQRプロフィール×話題提示」実装ガイド
+# CLAUDE.md — Qtto. 実装ガイド
 
-本プロジェクトは **Vercel** へデプロイし、**Gemini**（Google Generative AI）を用いて「話題を1件だけ」生成するWebアプリです。  
+**Qtto.**（キュット）は「QRコードでキュットつながる」をコンセプトにした、AIが会話の話題を提案する交流アプリです。
+本プロジェクトは **Vercel** へデプロイし、**Gemini**（Google Generative AI）を用いて「話題を1件だけ」生成します。
 開発は **Claude Code**（anthropic/claude-code）でのペアプロ・自動化を想定した手順・タスクを記述します。
 
 ---

@@ -20,10 +20,10 @@ export default function HomePage() {
               <QrCode className="w-12 h-12 text-white" />
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-teal-500 bg-clip-text text-transparent mb-3">
-              QR Connect
+              Qtto.
             </h1>
             <p className="text-gray-600 text-sm leading-relaxed">
-              QRコードで繋がる新しい出会い<br />
+              QRコードでキュットつながる<br />
               AIが話題を提案してくれる交流アプリ
             </p>
           </div>
@@ -109,7 +109,7 @@ export default function HomePage() {
 
         {/* フッター */}
         <p className="text-center text-white/60 text-xs mt-6">
-          © 2025 QR Connect - Powered by AI
+          © 2025 Qtto. - Powered by AI
         </p>
       </div>
     </div>

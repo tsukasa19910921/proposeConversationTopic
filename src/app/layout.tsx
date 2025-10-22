@@ -17,8 +17,8 @@ const notoSansJP = Noto_Sans_JP({
   variable: '--font-noto-sans-jp',
 })
 
-const APP_NAME = 'QRプロフィール'
-const APP_DESCRIPTION = 'QRコードで繋がり、AIが共通点から会話の話題を提案する高校生向けアプリ'
+const APP_NAME = 'Qtto.'
+const APP_DESCRIPTION = 'QRコードでキュットつながる。AIが共通点から会話の話題を提案するアプリ'
 const APP_URL = process.env.APP_BASE_URL || 'https://proposeconversationtopic.vercel.app'
 
 export const viewport: Viewport = {
@@ -34,10 +34,10 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`,
   },
   description: APP_DESCRIPTION,
-  keywords: ['QRコード', 'プロフィール', '会話', '高校生', 'AI', '話題提案', 'コミュニケーション'],
-  authors: [{ name: 'QRプロフィール開発チーム' }],
-  creator: 'QRプロフィール開発チーム',
-  publisher: 'QRプロフィール',
+  keywords: ['QRコード', 'プロフィール', '会話', '高校生', 'AI', '話題提案', 'コミュニケーション', 'Qtto'],
+  authors: [{ name: 'Qtto. 開発チーム' }],
+  creator: 'Qtto. 開発チーム',
+  publisher: 'Qtto.',
   applicationName: APP_NAME,
   formatDetection: {
     telephone: false,
